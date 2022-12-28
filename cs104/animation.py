@@ -1,15 +1,19 @@
-from datascience import push_ax, pop_ax
+from datascience import Plot
 from matplotlib import pyplot as plots
 from matplotlib.animation import FuncAnimation
 from matplotlib.offsetbox import AnchoredText
+import numpy as np
 
 from IPython.display import HTML
 
 import inspect
 
-def animate(f, gen, ax=None):
-    if ax == None:
-        _, ax = plots.subplots(figsize = (10, 6))
+def animate(f, gen, **kwargs):
+
+    kwargs = kwargs.copy()
+    kwargs.setdefault('figsize', (10, 6))
+    
+    fig, ax = plots.subplots(**kwargs)
 
     parameter_names = inspect.signature(f).parameters.keys()
 
@@ -18,11 +22,12 @@ def animate(f, gen, ax=None):
         
         parameters = {k: args[k] for k in parameter_names}
         
+        np.random.seed(0)
         f(**parameters)
 
-        if 'title' in args and args['title'] != "":
-            title = args['title'] 
-            at = AnchoredText(title, loc='upper center', prop=dict(size=16), frameon=True)
+        if '_caption' in args and args['_caption'] != "":
+            caption = args['_caption'] 
+            at = AnchoredText(caption, loc='upper center', prop=dict(size=16), frameon=True)
             ax.add_artist(at)
             at.patch.set_boxstyle("round,pad=0.,rounding_size=0.2")
             at.patch.set_facecolor('yellow')
@@ -37,11 +42,11 @@ def animate(f, gen, ax=None):
         at.patch.set_facecolor('wheat')
 
 
-    push_ax(ax)
-    anim = FuncAnimation(fig = ax.get_figure(), func = one_frame, frames = gen, interval = 200)
-    ax.get_figure().tight_layout(pad=2, rect=[0, 0, 0.75, 1])
-    video = anim.to_jshtml()
-    pop_ax()
-    plots.close()
+    with Plot(ax):
+        anim = FuncAnimation(fig, func = one_frame, frames = gen, interval = 200)
+        ax.get_figure().tight_layout(pad=2, rect=[0, 0, 0.75, 1])
+        video = anim.to_jshtml()
+        
+    plots.close(fig)
     display(HTML(video))
-
+    
