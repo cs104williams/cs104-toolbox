@@ -1,7 +1,7 @@
 """
 """
 
-__all__ = [ 'clean', 'with_clean_columns']
+__all__ = [ 'cleaned', 'with_cleaned_columns']
 
 from datascience import *
 import numpy as np
@@ -54,7 +54,7 @@ def clean_column(table, column_name, expected_type):
     
     return new_table, removed_rows
 
-def with_clean_columns(table, *labels_and_types):
+def with_cleaned_columns(table, *labels_and_types):
     
     if len(labels_and_types) == 1:
         labels_and_types = labels_and_types[0]
@@ -87,10 +87,14 @@ def with_clean_columns(table, *labels_and_types):
 
 
 
-def clean(table, expected_types):
+def cleaned(table, *expected_types):
     """
     """
     labels = table.labels
+    
+    if len(expected_types) == 1:
+        expected_types = expected_types[0]
+    
     if len(labels) != len(expected_types):
         raise ValueError("table has {} columns but {} types provided."
                             .format(len(labels), len(expected_types)))
