@@ -2,30 +2,20 @@ import uuid
 import traceback
 from IPython.core.display import display, HTML
 from IPython.utils.text import strip_ansi
+from IPython import get_ipython
+
 
 def shorten_stack(shell, etype, evalue, tb, tb_offset=None): 
     id = uuid.uuid1().hex
     full = strip_ansi(shell.InteractiveTB.stb2text(shell.InteractiveTB.structured_traceback(etype, evalue, tb, tb_offset)))
+    
+    for s in traceback.walk_tb(tb):
+        filename = s[0].f_code.co_filename
+        if "datascience" in filename or \
+            "cs104" in filename or \
+            "site-packages" in filename :
+            s[0].f_locals['__tracebackhide__'] = 1
 
-    # The files for each frame in the traceback:
-    #   * files[0] will always be the ipython entry point
-    #   * files[1] will always be in the notebook
-    files = [ frame.filename for frame in traceback.extract_tb(tb) ]
-    
-    # Find the top-most frame that corresponds to the notebook.  We will
-    #  ignore all the frames above that, since the code is not meaningful
-    #  to us.
-    notebook_filename = files[1]
-    last_notebook_filename = len(files) - 1
-    while last_notebook_filename > 0 and files[last_notebook_filename] != notebook_filename:
-        last_notebook_filename -= 1
-    
-    # Go the the last notebook frame and drop the rest
-    tail = tb
-    for i in range(last_notebook_filename):
-        tail = tail.tb_next
-    tail.tb_next = None
-    
     shell.showtraceback((etype, evalue, tb), tb_offset)
     
     text = f"""

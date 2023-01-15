@@ -30,7 +30,8 @@ def _extact_test_as_text():
     if text == '':
         local_vars = sys._getframe().f_back.f_back.f_back.f_locals
         line = local_vars.get('line', '?')
-        text = line + ": " + local_vars.get('text_as_text', "<can't find test text>")
+        text = line + ": " + local_vars.get('text_as_text', 
+                                            "<can't find test text>")
         
     return text
     
@@ -60,34 +61,40 @@ def _grab_interval(*interval):
     if len(interval) == 1:
         interval = interval[0]
     if np.shape(interval) != (2,):
-        raise ValueError(f"Interval must be passed as two numbers or an array containing two numbers, not {interval}")            
+        raise ValueError(f"Interval must be passed as two numbers " +
+                         "or an array containing two numbers, not {interval}")            
     return interval
         
 def test_between(a, *interval):
     interval = _grab_interval(*interval)
     if a < interval[0] or a >= interval[1]:
-        _print_message(_extact_test_as_text(), f"{a} is not in interval [{interval[0]}, {interval[1]})")
+        _print_message(_extact_test_as_text(), 
+                       f"{a} is not in interval [{interval[0]}, {interval[1]})")
 
 def test_between_or_equal(a, *interval):
     interval = _grab_interval(*interval)
     if a < interval[0] or a > interval[1]:
-        _print_message(_extact_test_as_text(), f"{a} is not in interval [{interval[0]}, {interval[1]}]")
+        _print_message(_extact_test_as_text(), 
+                       f"{a} is not in interval [{interval[0]}, {interval[1]}]")
 
 def test_strictly_between(a, *interval):
     interval = _grab_interval(*interval)
     if a <= interval[0] or a >= interval[1]:
-        _print_message(_extact_test_as_text(), f"{a} is not in interval ({interval[0]}, {interval[1]})")
+        _print_message(_extact_test_as_text(), 
+                       f"{a} is not in interval ({interval[0]}, {interval[1]})")
 
 def test_less_than(*a):
     for i in range(len(a)-1):
         if not np.all(np.less(a[i], a[i+1])):
-            _print_message(_extact_test_as_text(), f"Expression is not true: " + " < ".join([str(x) for x in a]))
+            _print_message(_extact_test_as_text(), 
+                           f"Expression is not true: " + " < ".join([str(x) for x in a]))
             return
 
 def test_less_than_or_equal(*a):
     for i in range(len(a)-1):
         if not np.all(np.less_equal(a[i], a[i+1])):
-            _print_message(_extact_test_as_text(), f"Expression is not true: " + " <= ".join([str(x) for x in a]))
+            _print_message(_extact_test_as_text(), 
+                           f"Expression is not true: " + " <= ".join([str(x) for x in a]))
             return
 
     
