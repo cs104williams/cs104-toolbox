@@ -2,6 +2,12 @@
 
 DOCS_DIR = docs
 
+.git/hooks/pre-commit:  .pre-commit-config.yaml 
+	echo $(COLOR)"Adding pre-commit hook to avoid committing notebook outputs"$(NC)
+	pre-commit install
+
+init: .git/hooks/pre-commit
+
 help:
 	@echo "Please use 'make <target>' where <target> is one of:"
 	@echo "  install     to install the datascience package locally"
