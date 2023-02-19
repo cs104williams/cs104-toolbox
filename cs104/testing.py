@@ -33,7 +33,7 @@ def _extact_test_as_text():
         text = line + ": " + local_vars.get('text_as_text', "<can't find test text>")
         
     return text
-    
+
 def test_is_true(a):
     if not a:
         _print_message(_extact_test_as_text(), "Expression is not True")
