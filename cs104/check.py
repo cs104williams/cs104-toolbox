@@ -24,38 +24,45 @@ def _extact_test_as_text():
     tbo = traceback.extract_stack()
     text = tbo[-3].line
     
-    # If we use the magic cells, then that frame will have an empty line,
-    # and we must look back to the fourth frame from the top to get the code
-    # from the local variable in the `test` function below.
-    if text == '':
-        local_vars = sys._getframe().f_back.f_back.f_back.f_locals
-        line = local_vars.get('line', '?')
-        text = line + ": " + local_vars.get('text_as_text', 
-                                            "<can't find test text>")
+    # # If we use the magic cells, then that frame will have an empty line,
+    # # and we must look back to the fourth frame from the top to get the code
+    # # from the local variable in the `test` function below.
+    # if text == '':
+    #     local_vars = sys._getframe().f_back.f_back.f_back.f_locals
+    #     line = local_vars.get('line', '?')
+    #     text = line + ": " + local_vars.get('text_as_text', 
+    #                                         "<can't find test text>")
         
     return text
 
-def test_is_true(a):
+def check(a):
     if not a:
         _print_message(_extact_test_as_text(), "Expression is not True")
         
-def test_equal(a,b):
+def check_equal(a,b):
     try:
         np.testing.assert_equal(a,b)
     except AssertionError as e:
         _print_message(_extact_test_as_text(), f"{a} is not equal to {b}")
 
-def test_close(a,b,atol=1e-5):
+def check_close(a,b,atol=1e-5):
     try:
         np.testing.assert_allclose(a,b,atol=atol)
     except AssertionError as e:
-        _print_message(_extact_test_as_text(), e)
+        _print_message(_extact_test_as_text(), f"{a} is not between {b-atol} and {b+atol}")
+
+def _shorten(x):
+    return np.array2string(np.array(x),threshold=10)
+    # if np.shape(x) != () and len(x) > 10:
+    #     return "[" + " ".join([str(v) for v in x[:5]] + [ "..." ] + [str(v) for v in x[-5:]]) + "]"
+    # else:
+    #     return str(x)
         
-def test_in(a, *r):
+def check_in(a, *r):
     if len(r) == 1:
         r = r[0]
     if a not in r:
-        _print_message(_extact_test_as_text(), f"{a} is not in range {r}")
+        _print_message(_extact_test_as_text(), f"{a} is not in range {_shorten(r)}")
 
 def _grab_interval(*interval):
     if len(interval) == 1:
@@ -65,40 +72,33 @@ def _grab_interval(*interval):
                          "or an array containing two numbers, not {interval}")            
     return interval
         
-def test_between(a, *interval):
+def check_between(a, *interval):
     interval = _grab_interval(*interval)
     if a < interval[0] or a >= interval[1]:
         _print_message(_extact_test_as_text(), 
                        f"{a} is not in interval [{interval[0]}, {interval[1]})")
 
-def test_between_or_equal(a, *interval):
+def check_between_or_equal(a, *interval):
     interval = _grab_interval(*interval)
     if a < interval[0] or a > interval[1]:
         _print_message(_extact_test_as_text(), 
                        f"{a} is not in interval [{interval[0]}, {interval[1]}]")
 
-def test_strictly_between(a, *interval):
+def check_strictly_between(a, *interval):
     interval = _grab_interval(*interval)
     if a <= interval[0] or a >= interval[1]:
         _print_message(_extact_test_as_text(), 
                        f"{a} is not in interval ({interval[0]}, {interval[1]})")
 
-def _shorten(x):
-    if np.shape(x) != () and len(x) > 10:
-        return "[" + " ".join([str(v) for v in x[:5]] + [ "..." ] + [str(v) for v in x[-5:]]) + "]"
-    else:
-        return str(x)
-        
-def test_less_than(*a):
+def check_less_than(*a):
     for i in range(len(a)-1):
         result = np.less(a[i], a[i+1])
-        print(result)
         if not np.all(result):
             _print_message(_extact_test_as_text(), 
                            f"Expression is not true: " + " < ".join([_shorten(x) for x in a]))
             return
 
-def test_less_than_or_equal(*a):
+def check_less_than_or_equal(*a):
     for i in range(len(a)-1):
         if not np.all(np.less_equal(a[i], a[i+1])):
             _print_message(_extact_test_as_text(), 
@@ -106,30 +106,30 @@ def test_less_than_or_equal(*a):
             return
 
     
-@register_cell_magic
-@needs_local_scope
-def test(line, cell, local_ns=None): 
-    original_count = _message_count
-    for text_as_text in cell.split("\n"):
-        if text_as_text != '':
-            try:
-                eval(text_as_text, local_ns)
-            except Exception as e:
-                etype, evalue, tb = sys.exc_info()
+# @register_cell_magic
+# @needs_local_scope
+# def test(line, cell, local_ns=None): 
+#     original_count = _message_count
+#     for text_as_text in cell.split("\n"):
+#         if text_as_text != '':
+#             try:
+#                 eval(text_as_text, local_ns)
+#             except Exception as e:
+#                 etype, evalue, tb = sys.exc_info()
                 
-                # Take all the frames above the one for the call to eval, which
-                # will have the file name <string>.
-                files = [ frame.filename for frame in traceback.extract_tb(tb) ]
-                index = files.index('<string>')
-                limit = index - len(files) + 1
-                tbo = traceback.format_exception(etype, evalue, tb, limit=limit)
+#                 # Take all the frames above the one for the call to eval, which
+#                 # will have the file name <string>.
+#                 files = [ frame.filename for frame in traceback.extract_tb(tb) ]
+#                 index = files.index('<string>')
+#                 limit = index - len(files) + 1
+#                 tbo = traceback.format_exception(etype, evalue, tb, limit=limit)
                 
-                _print_message(line + ": " + text_as_text, "\n".join(tbo))
+#                 _print_message(line + ": " + text_as_text, "\n".join(tbo))
 
-    if original_count == _message_count:
-        if line.strip() != '':
-            print("\u001b[35;1mPassed all tests for " + line + "!\u001b[0m")
-        else:
-            print("\u001b[35;1mPassed all tests!\u001b[0m")
+#     if original_count == _message_count:
+#         if line.strip() != '':
+#             print("\u001b[35;1mPassed all tests for " + line + "!\u001b[0m")
+#         else:
+#             print("\u001b[35;1mPassed all tests!\u001b[0m")
                 
-    return None
+#     return None

@@ -21,8 +21,11 @@ def animate(f, gen, interval=200, fig=None, **kwargs):
     parameter_names = inspect.signature(f).parameters.keys()
 
     def one_frame(args):
+        for ax in fig.axes:
+            ax.clear()
+            
         with Figure(fig):
-
+            
             parameters = {k: args[k] for k in parameter_names}
 
             np.random.seed(0) # make sort-of deterministic...

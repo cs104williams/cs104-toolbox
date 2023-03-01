@@ -2,7 +2,6 @@ import uuid
 import traceback
 from IPython.core.display import display, HTML
 from IPython.utils.text import strip_ansi
-<<<<<<< HEAD
 from ansi2html import Ansi2HTMLConverter
 
 def is_user_file(filename):
@@ -60,22 +59,6 @@ def shorten_stack(shell, etype, evalue, tb, tb_offset=None):
             locals['__tracebackhide__'] = 1
 
     # Show the stack trace in stderr
-=======
-from IPython import get_ipython
-
-
-def shorten_stack(shell, etype, evalue, tb, tb_offset=None): 
-    id = uuid.uuid1().hex
-    full = strip_ansi(shell.InteractiveTB.stb2text(shell.InteractiveTB.structured_traceback(etype, evalue, tb, tb_offset)))
-    
-    for s in traceback.walk_tb(tb):
-        filename = s[0].f_code.co_filename
-        if "datascience" in filename or \
-            "cs104" in filename or \
-            "site-packages" in filename :
-            s[0].f_locals['__tracebackhide__'] = 1
-
->>>>>>> 37be9ccd9ba1ebb5a3c8a1a61ee56f1750e8ee68
     shell.showtraceback((etype, evalue, tb), tb_offset)
     
     # Make the HTML full version we can show with a click.

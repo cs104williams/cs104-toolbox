@@ -9,3 +9,5 @@ from .maps import *
 
 import warnings
 warnings.filterwarnings("ignore")
+
+from .check import *
