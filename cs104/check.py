@@ -2,22 +2,42 @@
 
 import traceback
 import numpy as np
-from IPython.core.magic import register_cell_magic, needs_local_scope
-import sys
+# from IPython.core.magic import register_cell_magic, needs_local_scope
+# import sys
+import ast
 
-_message_count = 0
+
+def _in_otter():
+    for frame in traceback.StackSummary.extract(traceback.walk_stack(None)):
+        if frame.filename.endswith('ok_test.py'):
+            return True
+    return False
+
 
 def _print_message(test, message):
-    global _message_count
-    _message_count += 1
-    print("\u001b[35;1m")
-    print("---------------------------------------------------------------------------")
-    print("Yipes! " + test)
-    print()
+    # if in otter, skip the header and the ANSI color codes because Otter 
+    #   already shows all the info in its HTML-formatted error messages.
+    in_otter = _in_otter()
+    
+    if not in_otter: 
+        print("\u001b[35;1m")
+        print("---------------------------------------------------------------------------")
+        print("Yipes! " + test)
+        print("                                                                           ")
+        
     for line in str(message).strip().split("\n"):
         print("  ", line)
-    print("\u001b[0m")
+        
+    if not in_otter: 
+        print("\u001b[0m")
 
+def _arguments(test_line):
+    test_line = test_line.strip()
+    tree = ast.parse(test_line, mode='eval')
+    args = [ test_line[x.col_offset:x.end_col_offset].strip() for x in tree.body.args]
+    return args
+    
+    
 def _extact_test_as_text():
     # The frame with the test call is the third from the top if we call 
     # a test function directly
@@ -90,19 +110,68 @@ def check_strictly_between(a, *interval):
         _print_message(_extact_test_as_text(), 
                        f"{a} is not in interval ({interval[0]}, {interval[1]})")
 
+# def _value_at_index_if_array(v, i):
+#     if np.shape(v) == ():
+#         return v
+#     else:
+#         return v.item(i)
+        
+# def _binary_less_than(source_terms, values):
+#     result = np.less(values[0], values[1])
+#     if np.all(result):
+#         return None
+#     else:
+#         shape = np.shape(result)
+#         print(shape)
+#         if shape == ():
+#             return f"check_less_than({source_terms[0]}, {source_terms[1]}) failed:\n" + \
+#                    f"    Expression is not true: " + " < ".join([_shorten(x) for x in values])
+#         elif len(shape) == 1:
+#             false_indices = np.where(result == False)
+#             return f"check_less_than({source_terms[0]}, {source_terms[1]}) failed:\n" + \
+#                    f"    Expression is not true at indices {_shorten(false_indices[0])}"
+#         else:
+#             return f"Expression is not true: " + " < ".join([_shorten(x) for x in values])
+
+# def check_less_than(*a):
+#     text = _extact_test_as_text()
+#     args = _arguments(text)
+#     for i in range(len(a)-1):
+#         result = _binary_less_than(args[i:i+2], a[i:i+2])
+#         if result != None:
+#             _print_message(_extact_test_as_text(), result)
+#             return
+        
+            
+        
 def check_less_than(*a):
     for i in range(len(a)-1):
         result = np.less(a[i], a[i+1])
         if not np.all(result):
+            text = _extact_test_as_text()
+            args = _arguments(text)
             _print_message(_extact_test_as_text(), 
-                           f"Expression is not true: " + " < ".join([_shorten(x) for x in a]))
+                           f"Expression is not true: " + " < ".join([_shorten(x) for x in args[i:i+2]]))
             return
 
+# def check_less_than(*a):
+#     for i in range(len(a)-1):
+#         result = np.less(a[i], a[i+1])
+#         if not np.all(result):
+#             text = _extact_test_as_text()
+#             args = _arguments(text)
+#             _print_message(_extact_test_as_text(), 
+#                            f"Expression is not true: " + " < ".join([_shorten(x) for x in args[i:i+2]]))
+#             return
+        
+        
 def check_less_than_or_equal(*a):
     for i in range(len(a)-1):
         if not np.all(np.less_equal(a[i], a[i+1])):
+            text = _extact_test_as_text()
+            args = _arguments(text)
             _print_message(_extact_test_as_text(), 
-                           f"Expression is not true: " + " <= ".join([_shorten(x) for x in a]))
+                           f"Expression is not true: " + " <= ".join([_shorten(x) for x in args[i:i+2]]))
             return
 
     

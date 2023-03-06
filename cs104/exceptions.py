@@ -27,9 +27,6 @@ def shorten_stack(shell, etype, evalue, tb, tb_offset=None):
     .ansi36 { color: #60c6c8; }
     </style>""" + full
     
-    # Same full stack trace, but without any color... 
-    # full = strip_ansi(shell.InteractiveTB.stb2text(shell.InteractiveTB.structured_traceback(etype, evalue, tb, tb_offset)))
-
     # The files for each frame in the traceback:
     #   * files[0] will always be the ipython entry point
     #   * files[1] will always be in the notebook
@@ -64,7 +61,9 @@ def shorten_stack(shell, etype, evalue, tb, tb_offset=None):
     # Make the HTML full version we can show with a click.
     text = f"""
     <div align="right">
-        <a style='inherit;font-size:12px;' onclick='var x = document.getElementById("{id}"); if (x.style.display === "none") x.style.display = "block"; else x.style.display = "none";'>Full Details</a>
+        <a style='inherit;font-size:12px;' onclick='var x = document.getElementById("{id}"); if (x.style.display === "none") x.style.display = "block"; else x.style.display = "none";'>
+          Full Details
+        </a>
     </div>
     <pre style="font-size:14px;display:none; color: #3e424d; background-color:#FFDDDD;" id="{id}">{full}</pre>
     """

@@ -35,7 +35,7 @@ class States(Map):
 class Countries(Map):
     
     def map_table(table, **kwargs):
-        countries = Map.read_geojson(pkg_resources.resource_filename(__name__, 'data/world-countries.json'))
+        countries = Countries.read_geojson(pkg_resources.resource_filename(__name__, 'data/world-countries.json'))
         
         kws = {
             "nan_fill_color": 'gray', 
