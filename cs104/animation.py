@@ -10,7 +10,7 @@ from ipywidgets import interact, interactive, Text, Textarea, Layout
 import inspect
 import numbers
 
-def animate(f, gen, interval=200, fig=None, **kwargs):
+def animate(f, gen, interval=100, fig=None, **kwargs):
 
     kwargs = kwargs.copy()
     kwargs.setdefault('figsize', (10, 6))

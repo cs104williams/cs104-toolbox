@@ -1,3 +1,5 @@
+__all__ = []
+
 import uuid
 import traceback
 from IPython.core.display import display, HTML
@@ -9,14 +11,8 @@ def is_user_file(filename):
            '/site-packages' not in filename and \
            '/cs104' not in filename
 
-def shorten_stack(shell, etype, evalue, tb, tb_offset=None): 
-    id = uuid.uuid1().hex
-    
-    # Take the full stack trace and convert into HTML.  This depends on a few styles being defined here...
-    conv = Ansi2HTMLConverter()
-    ansi = "".join(shell.InteractiveTB.stb2text(shell.InteractiveTB.structured_traceback(etype, evalue, tb, tb_offset)))
-    full = conv.convert(ansi, full=False)
-    full = """<style type="text/css">
+html_prefix = \
+ """<style type="text/css">
     .ansi2html-content { display: inline; white-space: pre-wrap; word-wrap: break-word; }
     .body_foreground { color: #3e424d; }
     .body_background { background-color: #FFDDDD; }
@@ -25,7 +21,17 @@ def shorten_stack(shell, etype, evalue, tb, tb_offset=None):
     .ansi32 { color: #00a250; }
     .ansi34 { color: #208ffb; }
     .ansi36 { color: #60c6c8; }
-    </style>""" + full
+    </style>"""
+
+def shorten_stack(shell, etype, evalue, tb, tb_offset=None): 
+    id = uuid.uuid1().hex
+    
+    # Take the full stack trace and convert into HTML.  
+    conv = Ansi2HTMLConverter()
+    itb = shell.InteractiveTB
+    ansi = "".join(itb.stb2text(itb.structured_traceback(etype, evalue, tb, tb_offset)))
+    full = conv.convert(ansi, full=False)
+    full = html_prefix + full
     
     # The files for each frame in the traceback:
     #   * files[0] will always be the ipython entry point
@@ -46,7 +52,8 @@ def shorten_stack(shell, etype, evalue, tb, tb_offset=None):
         tail = tail.tb_next
     tail.tb_next = None
                 
-    # Hide any stack frames that correspond to library code, using the sneaky
+    # Hide any stack frames in the middle of the traceback
+    #  that correspond to library code, using the sneaky
     #  special var trick.
     for f in traceback.walk_tb(tb):
         frame = f[0]
@@ -60,12 +67,19 @@ def shorten_stack(shell, etype, evalue, tb, tb_offset=None):
     
     # Make the HTML full version we can show with a click.
     text = f"""
-    <div align="right">
-        <a style='inherit;font-size:12px;' onclick='var x = document.getElementById("{id}"); if (x.style.display === "none") x.style.display = "block"; else x.style.display = "none";'>
-          Full Details
-        </a>
-    </div>
-    <pre style="font-size:14px;display:none; color: #3e424d; background-color:#FFDDDD;" id="{id}">{full}</pre>
+        <div align="right">
+            <a style='inherit;font-size:12px;' 
+               onclick='var x = document.getElementById("{id}"); \
+               if (x.style.display === "none") \
+                 x.style.display = "block"; \
+                 else x.style.display = "none";'> \
+              Full Details
+            </a>
+        </div>
+        <pre style="font-size:14px;display:none; \
+                    color: #3e424d;  \
+                    background-color:#FFDDDD;" 
+             id="{id}">{full}</pre>
     """
     display(HTML(text))
     

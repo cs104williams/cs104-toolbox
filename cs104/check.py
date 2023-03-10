@@ -1,4 +1,12 @@
-# __all__ = ['test_is_true', 'test_equal', 'test_close']
+__all__ = ['check', 
+           'check_equal',
+           'check_close',
+           'check_less_than',
+           'check_less_than_or_equal',
+           'check_between',
+           'check_in',
+           'check_type'
+          ]
 
 import traceback
 import numpy as np
@@ -79,10 +87,10 @@ def binary_check(args_source, args_values, test_op, test_str):
                 arg_terms = "".join([ x + " and " for x in terms if x != None])
                 message += [ f"{arg_terms} {test_str(*values)} is False" ]
             if len(false_indices) > 3:
-                message += [ f"... omitting {len(false_indices)-3} more case(s) ..." ]
+                message += [ f"... omitting {len(false_indices)-3} more case(s)" ]
             return message 
         else:
-            return [ f"    {test_str(*map(short_form_for_value, args_values))} is False" ]
+            return [ f"{test_str(*map(short_form_for_value, args_values))} is False" ]
     else:
         return []
     
@@ -185,7 +193,7 @@ def check_between(a, *interval):
                     terms = ""
                 message += [ f"{terms}{repr(av)} is not in interval [{interval[0]},{interval[1]})" ]
             if len(false_indices) > 3:
-                message += [ f"... omitting {len(false_indices)-3} more case(s) ..." ]
+                message += [ f"... omitting {len(false_indices)-3} more case(s)" ]
         else:
             message = [ f"{a} is not in interval [{interval[0]},{interval[1]})" ]
         print_message(text, message)
