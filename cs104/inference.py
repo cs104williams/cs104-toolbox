@@ -41,6 +41,79 @@ import numpy as np
 import matplotlib.pyplot as plots
 import matplotlib.colors as colors
 
+def make_simulated_statistics(make_one_sample, sample_size,
+                              compute_sample_statistic, num_samples):
+    simulated_statistics = make_array()
+    for i in np.arange(0, num_samples):
+        simulated_sample = make_one_sample(sample_size)
+        sample_statistic = compute_sample_statistic(simulated_sample)
+        simulated_statistics = np.append(simulated_statistics, sample_statistic)
+    return simulated_statistics
+
+def visualize_simulated_statistics(simulated_statistics, observed_statistic = None, model_parameter = None):
+    table = Table().with_columns("Simulated Statistics", simulated_statistics)
+    plot = table.hist("Simulated Statistics",
+                     title="Simulated Statistics")
+    if observed_statistic is not None:
+        plot.dot(observed_statistic)
+    if model_parameter is not None:
+        plot.square(model_parameter)
+    return plot
+
+def calculate_pvalue(simulated_statistics, observed_statistic): 
+    """
+    Return the proportion of the simulated statistics that are greater than 
+    or equal to the observed statistic
+    """
+    return np.count_nonzero(simulated_statistics >= observed_statistic) / len(simulated_statistics)
+
+def visualize_difference_from_model(statistics, observed_statistic = None, model_parameter = None, p_cutoff = None):
+    differences = abs(statistics - model_parameter)
+    np.sort(differences)
+    table = Table().with_columns("abs(sample statistic - model parameter)", differences)
+    
+    if p_cutoff != None:
+        left_end = percentile(100 - p_cutoff, differences)
+    else:    
+        left_end = None
+    
+    plot = table.hist("abs(sample statistic - model parameter)",
+                      title="Differences from Model Parameter",
+                      left_end = left_end)
+    if observed_statistic is not None:
+        plot.dot(abs(observed_statistic - model_parameter)) 
+    return plot
+
+def total_variation_distance(distribution1, distribution2):
+    return sum(np.abs(distribution1 - distribution2)) / 2
+
+def permutation_sample(table, group_column_name):
+    """
+    Returns: The table with a new "Shuffled Label" column containing
+    the shuffled values of the group column.
+    """
+    
+    # array of shuffled labels
+    shuffled_labels = table.sample(with_replacement=False).column(group_column_name)
+    
+    # table of numerical variable and shuffled labels
+    shuffled_table = table.with_column('Shuffled Label', shuffled_labels)
+    
+    return shuffled_table
+
+def bootstrap(observed_sample, num_trials, resample_statistic): 
+
+    bootstrap_statistics = make_array()
+    
+    for i in np.arange(0, num_trials): 
+        #Key: in bootstrapping we must always sample with replacement 
+        simulated_resample = boston_sample.sample()
+        
+        resample_statistic = percentile(50, simulated_resample.column('REGULAR')) #get the median for that one resample 
+        bootstrap_statistics = np.append(bootstrap_statistics, resample_statistic)
+    
+    return bootstrap_statistics
+
 ######################################################################
 # Bootstrapping: generic code that can be resued 
 ######################################################################
@@ -55,6 +128,14 @@ def percentile_method(ci_percent, bootstrap_statistics):
     right = percentile(100 - percent_in_each_tail, bootstrap_statistics)
     return make_array(left, right)
 
+def visualize_ci(ci_percent, bootstrap_statistics):
+    results = Table().with_column('Bootstrap Samples Percent Purple', bootstrap_statistics)
+    
+    mendel_plot("Mendel's garden A", observed_statistic, bootstrap_statistics)
+
+    left,right = left_right = percentile_method(ci_percent, bootstrap_statistics)
+    plots.plot(left_right, [0, 0], color='yellow', lw=8)
+    
 
 ######################################################################
 # Linear regression: generic code that can be resued 

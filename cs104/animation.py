@@ -13,7 +13,7 @@ import numbers
 def animate(f, gen, interval=100, fig=None, **kwargs):
 
     kwargs = kwargs.copy()
-    kwargs.setdefault('figsize', (10, 6))
+    kwargs.setdefault('figsize', (8, 5))
     
     if fig == None:
         fig, _ = plots.subplots(**kwargs)
