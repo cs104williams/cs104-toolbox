@@ -5,7 +5,7 @@ from matplotlib.offsetbox import AnchoredText
 import numpy as np
 
 from IPython.display import HTML
-from ipywidgets import interact, interactive, Text, Textarea, Layout
+from ipywidgets import interactive, Text, Textarea, Layout, interaction
 
 import inspect
 import numbers

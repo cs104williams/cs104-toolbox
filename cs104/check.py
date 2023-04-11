@@ -10,10 +10,9 @@ __all__ = ['check',
 
 import traceback
 import numpy as np
-# from IPython.core.magic import register_cell_magic, needs_local_scope
-# import sys
 import ast
 
+from .valueerror import ValueError
 
 def in_otter():
     for frame in traceback.StackSummary.extract(traceback.walk_stack(None)):
@@ -164,7 +163,8 @@ def grab_interval(*interval):
     if len(interval) == 1:
         interval = interval[0]
     if np.shape(interval) != (2,) or np.shape(interval[0]) != () or np.shape(interval[1]) != ():
-        raise ValueError()            
+        raise ValueError(f"Interval must be passed as two numbers " +
+                         f"or an array containing two numbers, not {interval}", "check_between")
     return interval
         
 def check_between(a, *interval):
@@ -173,9 +173,8 @@ def check_between(a, *interval):
     
     try:
         interval = grab_interval(*interval)
-    except ValueError as err:
-        print_message(text, f"Interval must be passed as two numbers " +
-                            f"or an array containing two numbers, not {interval}")
+    except ValueError as error:
+        print_message(text, str(error))
         return
     
     result = np.logical_and(interval[0] <= a, a < interval[1])

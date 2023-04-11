@@ -23,7 +23,7 @@ def has_type(T):
             return False
     return is_a_T
 
-def clean_column(table, column_name, expected_type):
+def clean_for_column(table, column_name, expected_type):
     """Given a table, and column name, and the type of data you expect
        in that column (eg: str, int, or float), this function returns
        a new copy of the table with the following changes:
@@ -54,7 +54,7 @@ def clean_column(table, column_name, expected_type):
     
     return new_table, removed_rows
 
-def with_cleaned_columns(table, *labels_and_types):
+def clean_for_columns(table, *labels_and_types):
     
     if len(labels_and_types) == 1:
         labels_and_types = labels_and_types[0]
@@ -79,12 +79,19 @@ def with_cleaned_columns(table, *labels_and_types):
     removed = Table(kept.labels)
     for i in range(0, len(labels_and_types), 2):
         label, expected_type = labels_and_types[i], labels_and_types[i+1]
-        kept, dropped = clean_column(kept, label, expected_type)
+        kept, dropped = clean_for_column(kept, label, expected_type)
         removed.append(dropped)
     
     return (kept, removed)
             
 
+def take_clean(table, *labels_and_types):
+    clean, dirty = clean_for_columns(table, *labels_and_types)
+    return clean
+
+def take_dirty(table, *labels_and_types):
+    clean, dirty = clean_for_columns(table, *labels_and_types)
+    return dirty
 
 
 def cleaned(table, *expected_types):
