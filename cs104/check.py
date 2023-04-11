@@ -20,6 +20,7 @@ import traceback
 import numpy as np
 import ast
 
+from .valueerror import ValueError
 
 def in_otter():
     for frame in traceback.StackSummary.extract(traceback.walk_stack(None)):
@@ -295,9 +296,8 @@ def check_not_between(a, *interval):
     
     try:
         interval = grab_interval(*interval)
-    except ValueError as err:
-        print_message(text, f"Interval must be passed as two numbers " +
-                            f"or an array containing two numbers, not {interval}")
+    except ValueError as error:
+        print_message(text, str(error))
         return
     
     result = np.logical_or(not (interval[0] <= a), not(a < interval[1]))
