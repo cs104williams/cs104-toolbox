@@ -5,6 +5,8 @@ import traceback
 from IPython.core.display import display, HTML
 from IPython.utils.text import strip_ansi
 from ansi2html import Ansi2HTMLConverter
+import inspect
+import sys
 
 def is_user_file(filename):
     return "/datascience" not in filename and \
@@ -50,20 +52,29 @@ def shorten_stack(shell, etype, evalue, tb, tb_offset=None):
     tail = tb
     for i in range(last_notebook_filename):
         tail = tail.tb_next
+    callee = tail.tb_next
     tail.tb_next = None
-                
+              
+    if callee != None:
+        locals = callee.tb_frame.f_locals
+        print(callee.tb_frame)
+        print(locals)
+        tag = locals.get("__doc_tag__", None)
+        
     # Hide any stack frames in the middle of the traceback
     #  that correspond to library code, using the sneaky
     #  special var trick.
     for f in traceback.walk_tb(tb):
         frame = f[0]
         filename = frame.f_code.co_filename
+        print(inspect.getdoc(frame))
         if not is_user_file(filename):
             locals = frame.f_locals
             locals['__tracebackhide__'] = 1
 
     # Show the stack trace in stderr
     shell.showtraceback((etype, evalue, tb), tb_offset)
+    print("See Also:", tag, file=sys.stderr)
     
     # Make the HTML full version we can show with a click.
     text = f"""

@@ -12,8 +12,6 @@ import traceback
 import numpy as np
 import ast
 
-from .valueerror import ValueError
-
 def in_otter():
     for frame in traceback.StackSummary.extract(traceback.walk_stack(None)):
         if frame.filename.endswith('ok_test.py'):
@@ -164,7 +162,7 @@ def grab_interval(*interval):
         interval = interval[0]
     if np.shape(interval) != (2,) or np.shape(interval[0]) != () or np.shape(interval[1]) != ():
         raise ValueError(f"Interval must be passed as two numbers " +
-                         f"or an array containing two numbers, not {interval}", "check_between")
+                         f"or an array containing two numbers, not {interval}")
     return interval
         
 def check_between(a, *interval):

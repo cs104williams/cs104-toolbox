@@ -3,7 +3,7 @@ from ipywidgets import interactive, Text, Textarea, Layout, interaction
 from ipywidgets import interact as ipy_interact
 import numpy as np
 
-from .valueerror import *
+from .docs import *
 import inspect
 
 class Control: 
@@ -23,6 +23,7 @@ class Text(Control):
         self._v = initial
 
 class Slider(Control):
+    @doc_tag("cow")
     def __init__(self, *args, step=None):
         print(np.shape(args))
         if np.shape(args) == (1,2):
