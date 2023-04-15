@@ -13,6 +13,10 @@ def is_user_file(filename):
            '/site-packages' not in filename and \
            '/cs104' not in filename
 
+def is_known_lib_file(filename):
+    return "/datascience" in filename or \
+           '/cs104' in filename
+
 html_prefix = \
  """<style type="text/css">
     .ansi2html-content { display: inline; white-space: pre-wrap; word-wrap: break-word; }
@@ -25,6 +29,10 @@ html_prefix = \
     .ansi36 { color: #60c6c8; }
     </style>"""
 
+
+_root = "http://cs.williams.edu/~cs104/auto/python-library-ref.html"
+
+
 def shorten_stack(shell, etype, evalue, tb, tb_offset=None): 
     id = uuid.uuid1().hex
     
@@ -35,10 +43,12 @@ def shorten_stack(shell, etype, evalue, tb, tb_offset=None):
     full = conv.convert(ansi, full=False)
     full = html_prefix + full
     
+    frames = traceback.extract_tb(tb)
+    
     # The files for each frame in the traceback:
     #   * files[0] will always be the ipython entry point
     #   * files[1] will always be in the notebook
-    files = [ frame.filename for frame in traceback.extract_tb(tb) ]
+    files = [ frame.filename for frame in frames ]
     
     # Find the top-most frame that corresponds to the notebook.  We will
     #  ignore all the frames above that, since the code is not meaningful
@@ -47,7 +57,7 @@ def shorten_stack(shell, etype, evalue, tb, tb_offset=None):
     last_notebook_filename = len(files) - 1
     while last_notebook_filename > 0 and not is_user_file(files[last_notebook_filename]):
         last_notebook_filename -= 1
-
+        
     # Go the the last notebook frame and drop the rest
     tail = tb
     for i in range(last_notebook_filename):
@@ -57,9 +67,11 @@ def shorten_stack(shell, etype, evalue, tb, tb_offset=None):
               
     if callee != None:
         locals = callee.tb_frame.f_locals
-        print(callee.tb_frame)
-        print(locals)
         tag = locals.get("__doc_tag__", None)
+        if tag != None:
+            see_also = f"\n\u001b[1mSee also: \u001b[0m{_root}#{tag}\n"
+        else:
+            see_also = None
         
     # Hide any stack frames in the middle of the traceback
     #  that correspond to library code, using the sneaky
@@ -67,14 +79,14 @@ def shorten_stack(shell, etype, evalue, tb, tb_offset=None):
     for f in traceback.walk_tb(tb):
         frame = f[0]
         filename = frame.f_code.co_filename
-        print(inspect.getdoc(frame))
         if not is_user_file(filename):
             locals = frame.f_locals
             locals['__tracebackhide__'] = 1
 
     # Show the stack trace in stderr
     shell.showtraceback((etype, evalue, tb), tb_offset)
-    print("See Also:", tag, file=sys.stderr)
+    if see_also != None:
+        print(see_also, file=sys.stderr)
     
     # Make the HTML full version we can show with a click.
     text = f"""
@@ -93,8 +105,11 @@ def shorten_stack(shell, etype, evalue, tb, tb_offset=None):
              id="{id}">{full}</pre>
     """
     display(HTML(text))
-    
+
 # this registers a custom exception handler for the whole current notebook
-ipy = get_ipython()
-if ipy != None:
-    ipy.set_custom_exc((Exception,), shorten_stack)
+try:
+    ipy = get_ipython()
+    if ipy != None:
+        ipy.set_custom_exc((Exception,), shorten_stack)
+except NameError:
+    pass
