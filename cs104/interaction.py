@@ -1,9 +1,11 @@
+__all__ = [ 'interact', 'CheckBox', 'Text', 'Slider', 'Choice' ] 
+           
 from IPython.display import HTML
 from ipywidgets import interactive, Text, Textarea, Layout, interaction
 from ipywidgets import interact as ipy_interact
 import numpy as np
 
-from .docs import *
+from .docs import doc_tag
 import inspect
 
 class Control: 
@@ -23,7 +25,7 @@ class Text(Control):
         self._v = initial
 
 class Slider(Control):
-    @doc_tag()
+    @doc_tag('interact')
     def __init__(self, *args, step=None):
         print(np.shape(args))
         if np.shape(args) == (1,2):
@@ -37,11 +39,13 @@ class Slider(Control):
         self._v = args
 
 class Choice(Control):
+    @doc_tag('interact')
     def __init__(self, *args):
         if len(args) == 1 and np.shape(args[0]) != ():
             args = args[0]
         self._v = list(args)
     
+@doc_tag('interact')
 def interact(f, **kwargs):
     parameter_names = inspect.signature(f).parameters.keys()
     

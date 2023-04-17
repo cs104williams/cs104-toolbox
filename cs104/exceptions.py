@@ -11,7 +11,8 @@ import sys
 def is_user_file(filename):
     return "/datascience" not in filename and \
            '/site-packages' not in filename and \
-           '/cs104' not in filename
+           '/cs104' not in filename and \
+           '.pyx' not in filename
 
 def is_known_lib_file(filename):
     return "/datascience" in filename or \
@@ -28,10 +29,6 @@ html_prefix = \
     .ansi34 { color: #208ffb; }
     .ansi36 { color: #60c6c8; }
     </style>"""
-
-
-_root = "http://cs.williams.edu/~cs104/auto/python-library-ref.html"
-
 
 def shorten_stack(shell, etype, evalue, tb, tb_offset=None): 
     id = uuid.uuid1().hex
@@ -64,14 +61,16 @@ def shorten_stack(shell, etype, evalue, tb, tb_offset=None):
         tail = tail.tb_next
     callee = tail.tb_next
     tail.tb_next = None
-              
+
     if callee != None:
         locals = callee.tb_frame.f_locals
-        tag = locals.get("__doc_tag__", None)
-        if tag != None:
-            see_also = f"\n\u001b[1mSee also: \u001b[0m{_root}#{tag}\n"
+        url = locals.get("__doc_url__", None)
+        if url != None:
+            see_also = f"\n\u001b[1mSee also: \u001b[0m{url}\n"
         else:
             see_also = None
+    else:
+        see_also = None
         
     # Hide any stack frames in the middle of the traceback
     #  that correspond to library code, using the sneaky
