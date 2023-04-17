@@ -102,6 +102,7 @@ libs_to_wrap = [
 def _wrapper(tag, func): 
     def call(*args, **kwargs):
         __doc_url__ = url(tag)
+        # print(func.__name__, args, kwargs)
         result = func(*args, **kwargs)
         return result
     return call
