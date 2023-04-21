@@ -53,7 +53,7 @@ libs_to_wrap = [
         'std']),
     (datascience.Table, [
         ('__init__', 'Table'),
-        'read_table',
+        ('read_table','read_table',True),
         'with_columns',
         'column',
         'select',
@@ -99,18 +99,28 @@ libs_to_wrap = [
     ]),
 ]
 
-def _wrapper(tag, func): 
+def _wrapper(tag, module, func): 
     def call(*args, **kwargs):
         __doc_url__ = url(tag)
         # print(func.__name__, args, kwargs)
         result = func(*args, **kwargs)
         return result
-    return call
+    
+    @classmethod
+    def call_static(*args, **kwargs):
+        __doc_url__ = url(tag)
+        result = func.__get__(args[0],module)(*args[1:], **kwargs)
+        return result
+    
+    return call if module is None else call_static
 
 for module, fns in libs_to_wrap:
     for fn in fns:
         if type(fn) == str:
-            setattr(module, fn, _wrapper(fn, module.__dict__[fn]))
-        else:
+            setattr(module, fn, _wrapper(fn, None, module.__dict__[fn]))
+        elif len(fn) == 2:
             fn, tag = fn
-            setattr(module, fn, _wrapper(tag, module.__dict__[fn]))
+            setattr(module, fn, _wrapper(tag, None, module.__dict__[fn]))
+        else:
+            fn, tag, static = fn
+            setattr(module, fn, _wrapper(tag, module if static else None, module.__dict__[fn]))
