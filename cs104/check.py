@@ -35,17 +35,30 @@ def print_message(test, message):
     
     if in_jupyter:
         print("\u001b[35;1m")
-        print("---------------------------------------------------------------------------")
-        print("Yipes! " + test)
-        print("                                                                           ")
+        print("🐝 " + test)
         
     if np.shape(message) == ():
         message = str(message).strip().split("\n")
     for line in message:
-        print("  ", line)
+        print("     ", line)
         
     if in_jupyter:
         print("\u001b[0m")
+
+        
+#     if in_jupyter:
+#         print("\u001b[35;1m")
+#         print("---------------------------------------------------------------------------")
+#         print("Yipes! " + test)
+#         print("                                                                           ")
+        
+#     if np.shape(message) == ():
+#         message = str(message).strip().split("\n")
+#     for line in message:
+#         print("  ", line)
+        
+#     if in_jupyter:
+#         print("\u001b[0m")
 
 def arguments_from_check_call(test_line):
     test_line = test_line.strip()
@@ -160,11 +173,15 @@ def check(a):
                 
 @doc_tag()
 def check_equal(a, b):
-    text = source_for_check_call()
-    args = arguments_from_check_call(text)            
-    message = binary_check(args, [a, b], 
-                           lambda x,y: x == y, 
-                           lambda x,y: f"{repr(x)} == {repr(y)}")            
+    try:
+        text = source_for_check_call()
+        args = arguments_from_check_call(text)            
+        message = binary_check(args, [a, b], 
+                               lambda x,y: x == y, 
+                               lambda x,y: f"{repr(x)} == {repr(y)}")            
+    except e:
+        message = [ str(e) ]
+        
     if message != []:
         print_message(text, message)
     
