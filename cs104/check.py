@@ -35,12 +35,12 @@ def print_message(test, message):
     
     if in_jupyter:
         print("\u001b[35;1m")
-        print("🐝 " + test)
+        print("🐝 " + test + "\n     is False because:")
         
     if np.shape(message) == ():
         message = str(message).strip().split("\n")
     for line in message:
-        print("     ", line)
+        print("      ", line)
         
     if in_jupyter:
         print("\u001b[0m")
@@ -90,7 +90,7 @@ def term_and_value_at_index(arg, value, index):
     elif np.shape(value) == ():
         return f"{arg} == {repr(value)}", value
     else:
-        return f"{arg}[{index}] == {value[index]}", value[index]
+        return f"{arg}.item({index}) == {value[index]}", value[index]
 
 def binary_check(args_source, args_values, test_op, test_str):
     result = test_op(*args_values)
@@ -98,15 +98,17 @@ def binary_check(args_source, args_values, test_op, test_str):
         shape = np.shape(result)
         if shape == ():
             terms,values = tuple(zip(*[ term_and_value(*x) for x in zip(args_source,args_values) ]))
-            arg_terms = "".join([ x + " and " for x in terms if x != None])
-            return [ f"{arg_terms} {test_str(*values)} is False" ]
+            arg_terms = " and ".join([ x for x in terms if x != None])
+            return [ arg_terms ]
+#             return [ f"{arg_terms} {test_str(*values)} is False" ]
         elif len(shape) == 1:
             message = [  ]
             false_indices = np.where(result == False)[0]
             for i in false_indices[0:3]:
                 terms,values = tuple(zip(*[ term_and_value_at_index(*x,i) for x in zip(args_source,args_values) ]))
-                arg_terms = "".join([ x + " and " for x in terms if x != None])
-                message += [ f"{arg_terms} {test_str(*values)} is False" ]
+                arg_terms = " and ".join([ x for x in terms if x != None])
+                message += [ arg_terms ]
+#                 message += [ f"{arg_terms} {test_str(*values)} is False" ]
             if len(false_indices) > 3:
                 message += [ f"... omitting {len(false_indices)-3} more case(s)" ]
             return message 
@@ -175,10 +177,11 @@ def check(a):
 def check_equal(a, b):
     try:
         text = source_for_check_call()
-        args = arguments_from_check_call(text)            
+        args = arguments_from_check_call(text)   
         message = binary_check(args, [a, b], 
                                lambda x,y: x == y, 
-                               lambda x,y: f"{repr(x)} == {repr(y)}")            
+                                lambda x,y: f"{args[0]} == {args[1]}")            
+                              # lambda x,y: f"{repr(x)} == {repr(y)}")            
     except e:
         message = [ str(e) ]
         
@@ -220,7 +223,7 @@ def check_type(a, t):
     text = source_for_check_call()
     args = arguments_from_check_call(text) 
     if type(a) is not t:
-        print_message(text, f"{repr(a)} does not have type {t.__name__}.")
+        print_message(text, f"{args[0]} has type {type(a).__name__}, not {t.__name__}.")
 
 @doc_tag()
 def check_in(a, *r):
@@ -228,7 +231,7 @@ def check_in(a, *r):
         r = r[0]
     if a not in r:
         print_message(source_for_check_call(), 
-                      f"{a} is not in {short_form_for_value(r)}")
+                      f"{repr(a)} is not in {short_form_for_value(r)}")
                 
 @doc_tag()
 def check_between(a, *interval):
