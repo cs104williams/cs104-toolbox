@@ -1,4 +1,4 @@
-__all__ = ['check', 
+p__all__ = ['check', 
            'check_equal',
            'check_close',
            'check_less_than',
@@ -19,6 +19,7 @@ __all__ = ['check',
 import traceback
 import numpy as np
 import ast
+from textwrap import indent
 
 from .docs import doc_tag
 
@@ -29,36 +30,19 @@ def in_otter():
     return False
 
 def print_message(test, message):
+    if np.shape(message) != ():
+        message = "\n".join(message)
+
     # if in otter, skip the header and the ANSI color codes because Otter 
     #   already shows all the info in its HTML-formatted error messages.
     in_jupyter = not in_otter()
     
     if in_jupyter:
-        print("\u001b[35;1m")
-        print("🐝 " + test)
-        
-    if np.shape(message) == ():
-        message = str(message).strip().split("\n")
-    for line in message:
-        print("     ", line)
-        
-    if in_jupyter:
+        print("\u001b[35m\u001b[1m🐝 " + test)      
+        print(indent(message, "      "))
         print("\u001b[0m")
-
-        
-#     if in_jupyter:
-#         print("\u001b[35;1m")
-#         print("---------------------------------------------------------------------------")
-#         print("Yipes! " + test)
-#         print("                                                                           ")
-        
-#     if np.shape(message) == ():
-#         message = str(message).strip().split("\n")
-#     for line in message:
-#         print("  ", line)
-        
-#     if in_jupyter:
-#         print("\u001b[0m")
+    else:
+        print(indent(message.strip(), "      "))
 
 def arguments_from_check_call(test_line):
     test_line = test_line.strip()
@@ -90,7 +74,7 @@ def term_and_value_at_index(arg, value, index):
     elif np.shape(value) == ():
         return f"{arg} == {repr(value)}", value
     else:
-        return f"{arg}[{index}] == {value[index]}", value[index]
+        return f"{arg}.item({index}) == {value[index]}", value[index]
 
 def binary_check(args_source, args_values, test_op, test_str):
     result = test_op(*args_values)
@@ -99,19 +83,19 @@ def binary_check(args_source, args_values, test_op, test_str):
         if shape == ():
             terms,values = tuple(zip(*[ term_and_value(*x) for x in zip(args_source,args_values) ]))
             arg_terms = "".join([ x + " and " for x in terms if x != None])
-            return [ f"{arg_terms} {test_str(*values)} is False" ]
+            return [ f"{arg_terms}{test_str(*values)}" ]
         elif len(shape) == 1:
             message = [  ]
             false_indices = np.where(result == False)[0]
             for i in false_indices[0:3]:
                 terms,values = tuple(zip(*[ term_and_value_at_index(*x,i) for x in zip(args_source,args_values) ]))
                 arg_terms = "".join([ x + " and " for x in terms if x != None])
-                message += [ f"{arg_terms} {test_str(*values)} is False" ]
+                message += [ f"{arg_terms}{test_str(*values)}" ]
             if len(false_indices) > 3:
                 message += [ f"... omitting {len(false_indices)-3} more case(s)" ]
             return message 
         else:
-            return [ f"{test_str(*map(short_form_for_value, args_values))} is False" ]
+            return [ f"{test_str(*map(short_form_for_value, args_values))}" ]
     else:
         return []
     
@@ -123,7 +107,7 @@ def grab_interval(*interval):
         raise ValueError()            
     return interval
             
-def interval_check(args_source, a, interval, test_op, pos_neg_str):
+def interval_check(args_source, a, interval, test_op):
     try:
         interval = grab_interval(*interval)
     except ValueError as err:
@@ -140,14 +124,14 @@ def interval_check(args_source, a, interval, test_op, pos_neg_str):
             for i in false_indices[0:3]:
                 ai,av = term_and_value_at_index(args_source[0],a,i)
                 if ai != None:
-                    terms = ai + ", and "
+                    terms = ai + " and "
                 else:
                     terms = ""
-                message += [ f"{terms}{repr(av)} is {pos_neg_str} in interval [{interval[0]},{interval[1]})" ]
+                message += [ f"{terms}{repr(av)} is not in interval [{interval[0]},{interval[1]})" ]
             if len(false_indices) > 3:
                 message += [ f"... omitting {len(false_indices)-3} more case(s)" ]
         else:
-            message = [ f"{a} is {pos_neg_str} in interval [{interval[0]},{interval[1]})" ]
+            message = [ f"{repr(a)} is not in interval [{interval[0]},{interval[1]})" ]
         return message
     else:
         return []
@@ -169,7 +153,7 @@ def ordering_check(args, a, compare_fn, message_fn):
 @doc_tag()
 def check(a):
     if not np.all(a):
-        print_message(source_for_check_call(), "Expression is False")
+        print_message(source_for_check_call(), "Expression is not True")
                 
 @doc_tag()
 def check_equal(a, b):
@@ -178,7 +162,7 @@ def check_equal(a, b):
         args = arguments_from_check_call(text)            
         message = binary_check(args, [a, b], 
                                lambda x,y: x == y, 
-                               lambda x,y: f"{repr(x)} == {repr(y)}")            
+                               lambda x,y: f"{repr(x)} != {repr(y)}")            
     except e:
         message = [ str(e) ]
         
@@ -191,7 +175,7 @@ def check_close(a, b, plus_or_minus=1e-5):
     args = arguments_from_check_call(text)        
     message = binary_check(args, [a, b], 
                            lambda x,y: np.isclose(x,y,atol=plus_or_minus), 
-                           lambda x,y: f"{y-plus_or_minus} <= {x} <= {y+plus_or_minus}")
+                           lambda x,y: f"{x} < {y-plus_or_minus} or {y+plus_or_minus} < {x}")
     if message != []:
         print_message(text, message)
     
@@ -201,7 +185,7 @@ def check_less_than(*a):
     args = arguments_from_check_call(text)    
     message = ordering_check(args, a, 
                              lambda x,y: x < y, 
-                             lambda x,y: f"{repr(x)} < {repr(y)}")
+                             lambda x,y: f"{repr(x)} >= {repr(y)}")
     if message != []:
         print_message(text, message)    
 
@@ -211,7 +195,7 @@ def check_less_than_or_equal(*a):
     args = arguments_from_check_call(text)    
     message = ordering_check(args, a, 
                              lambda x,y: x <= y, 
-                             lambda x,y: f"{repr(x)} <= {repr(y)}")
+                             lambda x,y: f"{repr(x)} > {repr(y)}")
     if message != []:
         print_message(text, message)
         
@@ -220,15 +204,19 @@ def check_type(a, t):
     text = source_for_check_call()
     args = arguments_from_check_call(text) 
     if type(a) is not t:
-        print_message(text, f"{repr(a)} does not have type {t.__name__}.")
+        term,value = term_and_value(args[0], a)
+        print_message(text, f"{term + ' and ' if term is not None else ''}{repr(a)} has type {type(a).__name__}, not {t.__name__}")
 
 @doc_tag()
 def check_in(a, *r):
+    text = source_for_check_call()
+    args = arguments_from_check_call(text) 
     if len(r) == 1:
         r = r[0]
     if a not in r:
+        term,value = term_and_value(args[0], a)
         print_message(source_for_check_call(), 
-                      f"{a} is not in {short_form_for_value(r)}")
+                      f"{term + ' and ' if term is not None else ''}{repr(a)} is not in {short_form_for_value(r)}")
                 
 @doc_tag()
 def check_between(a, *interval):
@@ -236,8 +224,7 @@ def check_between(a, *interval):
     args = arguments_from_check_call(text)
 
     message = interval_check(args, a, interval,
-                             lambda a,interval: np.logical_and(interval[0] <= a, a < interval[1]),
-                             "")
+                             lambda a,interval: np.logical_and(interval[0] <= a, a < interval[1]))
     if message != []:
         print_message(text, message)
     
@@ -254,7 +241,7 @@ def check_not_equal(a, b):
     args = arguments_from_check_call(text)            
     message = binary_check(args, [a, b], 
                            lambda x,y: x != y, 
-                           lambda x,y: f"{repr(x)} != {repr(y)}")            
+                           lambda x,y: f"{repr(x)} == {repr(y)}")            
     if message != []:
         print_message(text, message)
     
@@ -264,7 +251,7 @@ def check_not_close(a, b, plus_or_minus=1e-5):
     args = arguments_from_check_call(text)        
     message = binary_check(args, [a, b], 
                            lambda x,y: not np.isclose(x,y,atol=plus_or_minus), 
-                           lambda x,y: f"{x} < {y-plus_or_minus} or {y+plus_or_minus} <= {x}")
+                           lambda x,y: f"{y-plus_or_minus} <= {x} <= {y+plus_or_minus}")
     if message != []:
         print_message(text, message)
     
@@ -274,7 +261,7 @@ def check_not_less_than(*a):
     args = arguments_from_check_call(text)    
     message = ordering_check(args, a, 
                              lambda x,y: x >= y, 
-                             lambda x,y: f"{repr(x)} >= {repr(y)}")
+                             lambda x,y: f"{repr(x)} < {repr(y)}")
     if message != []:
         print_message(text, message)    
 
@@ -284,7 +271,7 @@ def check_not_less_than_or_equal(*a):
     args = arguments_from_check_call(text)    
     message = ordering_check(args, a, 
                              lambda x,y: x > y, 
-                             lambda x,y: f"{repr(x)} > {repr(y)}")
+                             lambda x,y: f"{repr(x)} <= {repr(y)}")
     if message != []:
         print_message(text, message)
         
@@ -293,15 +280,17 @@ def check_not_type(a, t):
     text = source_for_check_call()
     args = arguments_from_check_call(text) 
     if type(a) is t:
-        print_message(text, f"{repr(a)} has type {t.__name__}.")
+        term,value = term_and_value(args[0], a)        
+        print_message(text, f"{term + ' and ' if term is not None else ''}{repr(a)} has type {t.__name__}")
 
 @doc_tag("check_in")
 def check_not_in(a, *r):
     if len(r) == 1:
         r = r[0]
     if a in r:
+        term,value = term_and_value(args[0], a)
         print_message(source_for_check_call(), 
-                      f"{a} is in {short_form_for_value(r)}")
+                      f"{term + ' and ' if term is not None else ''}{repr(a)} is in {short_form_for_value(r)}")        
                 
 @doc_tag("check_between")
 def check_not_between(a, *interval):
@@ -324,14 +313,14 @@ def check_not_between(a, *interval):
             for i in false_indices[0:3]:
                 ai,av = term_and_value_at_index(args[0],a,i)
                 if ai != None:
-                    terms = ai + ", and "
+                    terms = ai + " and "
                 else:
                     terms = ""
                 message += [ f"{terms}{repr(av)} is in interval [{interval[0]},{interval[1]})" ]
             if len(false_indices) > 3:
                 message += [ f"... omitting {len(false_indices)-3} more case(s)" ]
         else:
-            message = [ f"{a} is in interval [{interval[0]},{interval[1]})" ]
+            message = [ f"{repr(a)} is in interval [{interval[0]},{interval[1]})" ]
         print_message(text, message)
     
 
