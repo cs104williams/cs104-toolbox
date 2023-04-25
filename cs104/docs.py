@@ -99,28 +99,40 @@ libs_to_wrap = [
     ]),
 ]
 
-def _wrapper(tag, module, func): 
+def _wrapper(tag, fn_name, func): 
     def call(*args, **kwargs):
-        __doc_url__ = url(tag)
-        # print(func.__name__, args, kwargs)
-        result = func(*args, **kwargs)
-        return result
+        __doc_url__ = url(tag)  # special name picked up in cs104.exceptions.
+        return func(*args, **kwargs)
     
-    @classmethod
-    def call_static(*args, **kwargs):
-        __doc_url__ = url(tag)
-        result = func.__get__(args[0],module)(*args[1:], **kwargs)
-        return result
-    
-    return call if module is None else call_static
+    wrapper = call
+    wrapper.__name__ = fn_name
+    return wrapper
 
-for module, fns in libs_to_wrap:
-    for fn in fns:
-        if type(fn) == str:
-            setattr(module, fn, _wrapper(fn, None, module.__dict__[fn]))
-        elif len(fn) == 2:
-            fn, tag = fn
-            setattr(module, fn, _wrapper(tag, None, module.__dict__[fn]))
+def _wrapper_static(tag, fn_name, module, func): 
+    @classmethod
+    def call(*args, **kwargs):
+        __doc_url__ = url(tag)   # special name picked up in cs104.exceptions.
+        return func.__get__(args[0],module)(*args[1:], **kwargs)
+    
+    wrapper = call
+    wrapper.__name__ = fn_name
+    return wrapper
+
+for module, fn_names in libs_to_wrap:
+    for fn_name in fn_names:
+        if type(fn_name) == str:
+            original_function = module.__dict__[fn_name]
+            wrapper = _wrapper(fn_name, fn_name, original_function)
+        elif len(fn_name) == 2: 
+            fn_name, tag = fn_name
+            original_function = module.__dict__[fn_name]
+            wrapper = _wrapper(tag, fn_name, original_function)
         else:
-            fn, tag, static = fn
-            setattr(module, fn, _wrapper(tag, module if static else None, module.__dict__[fn]))
+            fn_name, tag, is_static = fn_name
+            original_function = module.__dict__[fn_name]
+            if is_static:
+                wrapper = _wrapper_static(tag, fn_name, module, original_function)
+            else: 
+                wrapper = _wrapper(tag, fn_name, original_function)
+
+        setattr(module, fn_name, wrapper)

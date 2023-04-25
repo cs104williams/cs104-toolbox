@@ -59,10 +59,7 @@ def interact(f, **kwargs):
             widgets[param] = value._v
         else:
             widgets[param] = interaction.fixed(value)
-        
-#         if not issubclass(type(value), Control):
-#             raise ValueError(f"argment: {param} must be one of the interactive controls: Fixed(...), CheckBox(...), Slider(...), or Choice(...)")
-#         widgets[param] = value._v
+
     w = interactive(f, **widgets)
     display(w)
 
