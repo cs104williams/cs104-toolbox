@@ -59,12 +59,14 @@ def source_for_check_call():
     return tbo[-4].line
 
 def pvalue(x):
+    """Print a value in a readable way, either via repr or via an abbreviated np-array."""
     if np.shape(x) == ():
         return repr(x)
     else:
         return np.array2string(x,threshold=10)
 
 def short_form_for_value(x):
+    # x may be a list or array, so make sure an array...
     return np.array2string(np.array(x),threshold=10)
 
 def term_and_value(arg, value):
