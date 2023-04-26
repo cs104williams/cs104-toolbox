@@ -53,7 +53,7 @@ libs_to_wrap = [
         'std']),
     (datascience.Table, [
         ('__init__', 'Table'),
-        'read_table',
+        ('read_table','read_table',True),
         'with_columns',
         'column',
         'select',
@@ -99,18 +99,40 @@ libs_to_wrap = [
     ]),
 ]
 
-def _wrapper(tag, func): 
+def _wrapper(tag, fn_name, func): 
     def call(*args, **kwargs):
-        __doc_url__ = url(tag)
-        # print(func.__name__, args, kwargs)
-        result = func(*args, **kwargs)
-        return result
-    return call
+        __doc_url__ = url(tag)  # special name picked up in cs104.exceptions.
+        return func(*args, **kwargs)
+    
+    wrapper = call
+    wrapper.__name__ = fn_name
+    return wrapper
 
-for module, fns in libs_to_wrap:
-    for fn in fns:
-        if type(fn) == str:
-            setattr(module, fn, _wrapper(fn, module.__dict__[fn]))
+def _wrapper_static(tag, fn_name, module, func): 
+    @classmethod
+    def call(*args, **kwargs):
+        __doc_url__ = url(tag)   # special name picked up in cs104.exceptions.
+        return func.__get__(args[0],module)(*args[1:], **kwargs)
+    
+    wrapper = call
+    wrapper.__name__ = fn_name
+    return wrapper
+
+for module, fn_names in libs_to_wrap:
+    for fn_name in fn_names:
+        if type(fn_name) == str:
+            original_function = module.__dict__[fn_name]
+            wrapper = _wrapper(fn_name, fn_name, original_function)
+        elif len(fn_name) == 2: 
+            fn_name, tag = fn_name
+            original_function = module.__dict__[fn_name]
+            wrapper = _wrapper(tag, fn_name, original_function)
         else:
-            fn, tag = fn
-            setattr(module, fn, _wrapper(tag, module.__dict__[fn]))
+            fn_name, tag, is_static = fn_name
+            original_function = module.__dict__[fn_name]
+            if is_static:
+                wrapper = _wrapper_static(tag, fn_name, module, original_function)
+            else: 
+                wrapper = _wrapper(tag, fn_name, original_function)
+
+        setattr(module, fn_name, wrapper)

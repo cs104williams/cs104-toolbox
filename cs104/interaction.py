@@ -27,7 +27,6 @@ class Text(Control):
 class Slider(Control):
     @doc_tag('interact')
     def __init__(self, *args, step=None):
-        print(np.shape(args))
         if np.shape(args) == (1,2):
             args = args[0]
         elif np.shape(args) != (2,):
@@ -60,9 +59,8 @@ def interact(f, **kwargs):
             widgets[param] = value._v
         else:
             widgets[param] = interaction.fixed(value)
-        
-#         if not issubclass(type(value), Control):
-#             raise ValueError(f"argment: {param} must be one of the interactive controls: Fixed(...), CheckBox(...), Slider(...), or Choice(...)")
-#         widgets[param] = value._v
-    ipy_interact(f, **widgets)
+
+    w = interactive(f, **widgets)
+    display(w)
+
 
