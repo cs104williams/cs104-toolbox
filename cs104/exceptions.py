@@ -66,7 +66,7 @@ def shorten_stack(shell, etype, evalue, tb, tb_offset=None):
         locals = callee.tb_frame.f_locals
         url = locals.get("__doc_url__", None)
         if url != None:
-            see_also = f"\n\u001b[1mSee also: \u001b[0m{url}\n"
+            see_also = f'<div class="w-100" style="margin-right: -20px; background-color:#FFDDDD;"><a href="{url}">See docs</a></div>' # f"\n\u001b[1mSee also: \u001b[0m{url}\n"
         else:
             see_also = None
     else:
@@ -84,8 +84,8 @@ def shorten_stack(shell, etype, evalue, tb, tb_offset=None):
 
     # Show the stack trace in stderr
     shell.showtraceback((etype, evalue, tb), tb_offset)
-    if see_also != None:
-        print(see_also, file=sys.stderr)
+    # if see_also != None:
+    #     print(see_also, file=sys.stderr)
     
     # Make the HTML full version we can show with a click.
     text = f"""
@@ -104,6 +104,8 @@ def shorten_stack(shell, etype, evalue, tb, tb_offset=None):
              id="{id}">{full}</pre>
     """
     display(HTML(text))
+    if see_also != None:
+        display(HTML(see_also))
 
 # this registers a custom exception handler for the whole current notebook
 try:

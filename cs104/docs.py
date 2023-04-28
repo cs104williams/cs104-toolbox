@@ -6,7 +6,8 @@ import builtins
 import numpy as np
 import datascience
 
-_root = "http://cs.williams.edu/~cs104/auto/python-library-ref.html"
+# _root = "http://cs.williams.edu/~cs104/auto/python-library-ref.html"
+_root = "https://cs104williams.github.io/assets/python-library-ref.html"
 
 def url(tag):
     return _root + "#" + tag
