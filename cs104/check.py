@@ -56,6 +56,7 @@ def source_for_check_call():
     # a test function directly
     # Actually fourth with the doc tags...
     tbo = traceback.extract_stack()
+    assert tbo[-4].line, "The cs104 library should only be used inside a Jupyter notebook or ipython..."
     return tbo[-4].line
 
 def pvalue(x):
@@ -181,7 +182,8 @@ def check_equal(a, b):
         message = binary_check(args, [a, b], 
                                lambda x,y: x == y, 
                                lambda x,y: f"{pvalue(x)} != {pvalue(y)}")       
-    except e:
+    except Exception as e:
+        text = "Error: Cannot find source code"
         message = [ str(e) ]
         
     if message != []:
