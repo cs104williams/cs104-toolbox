@@ -41,9 +41,9 @@ class PyTest(TestCommand):
 
 
 setup(
-    name = 'cs104lib',
-    packages = ['cs104lib'],
-    package_dir = { 'cs104lib': 'cs104' },
+    name = 'cs104',
+    packages = ['cs104'],
+    package_dir = { 'cs104': 'cs104' },
     version = version,
     install_requires = install_requires,
     tests_require = tests_requires,
