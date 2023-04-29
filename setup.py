@@ -51,5 +51,5 @@ setup(
     description = 'Various tools for CS104',
     long_description = 'Various tools for CS104',
     author = 'Stephen Freund and Katie Keith',
-    package_data={"cs104lib": ["data/*.json"]}
+    package_data={"cs104": ["data/*.json"]}
 )
