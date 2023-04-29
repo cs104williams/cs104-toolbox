@@ -1,3 +1,4 @@
 datascience
 numpy
 ansi2html
+ipylab
