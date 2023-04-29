@@ -62,15 +62,12 @@ def shorten_stack(shell, etype, evalue, tb, tb_offset=None):
     callee = tail.tb_next
     tail.tb_next = None
 
+    see_also = ''
     if callee != None:
         locals = callee.tb_frame.f_locals
         url = locals.get("__doc_url__", None)
         if url != None:
-            see_also = f'<div class="w-100" style="margin-right: -20px; background-color:#FFDDDD;"><a href="{url}">See docs</a></div>' # f"\n\u001b[1mSee also: \u001b[0m{url}\n"
-        else:
-            see_also = None
-    else:
-        see_also = None
+            see_also = f'<strong>>>>>> See also the <a href="{url}">docs for {url[url.index("#")+1:]}</a></strong>'
         
     # Hide any stack frames in the middle of the traceback
     #  that correspond to library code, using the sneaky
@@ -84,28 +81,27 @@ def shorten_stack(shell, etype, evalue, tb, tb_offset=None):
 
     # Show the stack trace in stderr
     shell.showtraceback((etype, evalue, tb), tb_offset)
-    # if see_also != None:
-    #     print(see_also, file=sys.stderr)
-    
-    # Make the HTML full version we can show with a click.
+
     text = f"""
-        <div align="right">
-            <a style='inherit;font-size:12px;' 
+        <div class="m-2" style="padding-left: 5px; margin-right: -20px; padding-top:20px; padding-bottom:5px; background-color:#FFDDDD;">
+              {see_also}
+        </div> 
+          <div align="right" style="margin-right: -20px;"> \
+            <a style='inherit;font-size:12px;'  \
                onclick='var x = document.getElementById("{id}"); \
                if (x.style.display === "none") \
                  x.style.display = "block"; \
                  else x.style.display = "none";'> \
               Full Details
             </a>
-        </div>
-        <pre style="font-size:14px;display:none; \
+          </div>
+        <pre style="margin-right: -20px; \
+                    font-size:14px;display:none; \
                     color: #3e424d;  \
-                    background-color:#FFDDDD;" 
+                    background-color:#FFDDDD;" \
              id="{id}">{full}</pre>
     """
     display(HTML(text))
-    if see_also != None:
-        display(HTML(see_also))
 
 # this registers a custom exception handler for the whole current notebook
 try:

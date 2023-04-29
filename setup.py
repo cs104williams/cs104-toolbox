@@ -10,10 +10,7 @@ with open('requirements.txt') as fid:
     install_requires = [l.strip() for l in fid.readlines() if l]
 
 tests_requires = [
-    'pytest',
-    'coverage',
-    'coveralls',
-    'bokeh'
+
 ]
 
 
@@ -44,8 +41,9 @@ class PyTest(TestCommand):
 
 
 setup(
-    name = 'cs104toolbox',
-    packages = ['cs104'],
+    name = 'cs104lib',
+    packages = ['cs104lib'],
+    package_dir = { 'cs104lib': 'cs104' },
     version = version,
     install_requires = install_requires,
     tests_require = tests_requires,
@@ -53,9 +51,5 @@ setup(
     description = 'Various tools for CS104',
     long_description = 'Various tools for CS104',
     author = 'Stephen Freund and Katie Keith',
-    # url = 'https://github.com/data-8/datascience',
-    # download_url = 'https://github.com/data-8/datascience/archive/%s.zip' % version,
-    # keywords = ['data', 'tools', 'berkeley'],
-    # classifiers = [],
-    # package_data={"datascience": ["geodata/*.csv"]}
+    package_data={"cs104lib": ["data/*.json"]}
 )
