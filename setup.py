@@ -41,7 +41,7 @@ class PyTest(TestCommand):
 
 
 setup(
-    name = 'cs104lib',
+    name = 'cs104-toolbox',
     packages = ['cs104'],
     package_dir = { 'cs104': 'cs104' },
     version = version,
