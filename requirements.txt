@@ -1,4 +1,4 @@
-datascience
+git+https://github.com/cs104williams/cs104-datascience
 numpy
 ansi2html
 ipylab

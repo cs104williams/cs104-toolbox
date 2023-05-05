@@ -227,8 +227,6 @@ def check_less_than_or_equal(*a):
         
 @doc_tag()
 def check_type(a, t):
-    a = arrayify(a)
-
     text = source_for_check_call()
     args = arguments_from_check_call(text) 
     if type(a) is not t:
@@ -334,8 +332,6 @@ def check_not_less_than_or_equal(*a):
         
 @doc_tag("check_type")
 def check_not_type(a, t):
-    a = arrayify(a)
-    
     text = source_for_check_call()
     args = arguments_from_check_call(text) 
     if type(a) is t:

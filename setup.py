@@ -14,7 +14,7 @@ with open('cs104/version.py') as fid:
             break
 
 setup(
-    name = 'cs104lib',
+    name = 'cs104-toolbox',
     packages = ['cs104'],
     package_dir = { 'cs104': 'cs104' },
     version = version,
