@@ -1,8 +1,7 @@
 __all__ = [ 'interact', 'CheckBox', 'Text', 'Slider', 'Choice' ] 
            
-from IPython.display import HTML
-from ipywidgets import interactive, Text, Textarea, Layout, interaction
-from ipywidgets import interact as ipy_interact
+from IPython.display import display
+from ipywidgets import interactive, Text, interaction
 import numpy as np
 
 from .docs import doc_tag
@@ -11,10 +10,6 @@ import inspect
 class Control: 
     def __str__(self):
         return str(self._v)
-
-# class Fixed(Control):
-#     def __init__(self, v):
-#         self._v = interaction.fixed(v)
 
 class CheckBox(Control):
     def __init__(self, initial=None):

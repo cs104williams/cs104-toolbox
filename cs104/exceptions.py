@@ -3,6 +3,7 @@ __all__ = []
 import uuid
 import traceback
 from IPython.core.display import display, HTML
+from IPython.core.getipython import get_ipython
 from IPython.utils.text import strip_ansi
 from ansi2html import Ansi2HTMLConverter
 import inspect

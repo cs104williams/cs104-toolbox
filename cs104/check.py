@@ -64,11 +64,11 @@ def pvalue(x):
     if np.shape(x) == ():
         return repr(x)
     else:
-        return np.array2string(np.array(x),threshold=10)
+        return np.array2string(np.array(x),separator=',',threshold=10)
 
 def short_form_for_value(x):
     # x may be a list or array, so make sure an array...
-    return np.array2string(np.array(x),threshold=10)
+    return np.array2string(np.array(x),separator=',',threshold=10)
 
 def term_and_value(arg, value):
     if arg == repr(value):
@@ -122,7 +122,7 @@ def grab_interval(*interval):
         raise ValueError()            
     return arrayify(interval)
             
-def interval_check(args_source, a, interval, test_op):
+def interval_check(args_source, a, interval, test_op, test_str):
     try:
         interval = grab_interval(*interval)
     except ValueError as err:
@@ -142,11 +142,11 @@ def interval_check(args_source, a, interval, test_op):
                     terms = ai + " and "
                 else:
                     terms = ""
-                message += [ f"{terms}{pvalue(av)} is not in interval [{interval[0]},{interval[1]})" ]
+                message += [ f"{terms}{pvalue(av)}{test_str(interval)}" ]
             if len(false_indices) > 3:
                 message += [ f"... omitting {len(false_indices)-3} more case(s)" ]
         else:
-            message = [ f"{pvalue(a)} is not in interval [{interval[0]},{interval[1]})" ]
+            message = [ f"{pvalue(a)}{test_str(interval)}" ]
         return message
     else:
         return []
@@ -227,7 +227,7 @@ def check_less_than_or_equal(*a):
         
 @doc_tag()
 def check_type(a, t):
-    a = [ arrayify(x) for x in a ]
+    a = arrayify(a)
 
     text = source_for_check_call()
     args = arguments_from_check_call(text) 
@@ -237,7 +237,7 @@ def check_type(a, t):
 
 @doc_tag()
 def check_in(a, *r):
-    a = [ arrayify(x) for x in a ]
+    a = arrayify(a)
 
     text = source_for_check_call()
     args = arguments_from_check_call(text) 
@@ -250,16 +250,30 @@ def check_in(a, *r):
                 
 @doc_tag()
 def check_between(a, *interval):
-    a = [ arrayify(x) for x in a ]
+    a = arrayify(a)
     
     text = source_for_check_call()
     args = arguments_from_check_call(text)
 
     message = interval_check(args, a, interval,
-                             lambda a,interval: np.logical_and(interval[0] <= a, a < interval[1]))
+                             lambda a,interval: np.logical_and(interval[0] <= a, a < interval[1]),
+                             lambda interval: f" is not in interval [{interval[0]},{interval[1]})")
     if message != []:
         print_message(text, message)
+
+@doc_tag()
+def check_between_or_equal(a, *interval):
+    a = arrayify(a)
     
+    text = source_for_check_call()
+    args = arguments_from_check_call(text)
+
+    message = interval_check(args, a, interval,
+                             lambda a,interval: np.logical_and(interval[0] <= a, a <= interval[1]),
+                             lambda interval: f" is not in interval [{interval[0]},{interval[1]}]")
+    if message != []:
+        print_message(text, message)
+
 # Negations
 
 @doc_tag("check")
@@ -332,6 +346,8 @@ def check_not_type(a, t):
 def check_not_in(a, *r):
     a = arrayify(a)
     
+    text = source_for_check_call()
+    args = arguments_from_check_call(text) 
     if len(r) == 1:
         r = arrayify(r[0])
     if a in r:
@@ -345,33 +361,27 @@ def check_not_between(a, *interval):
     
     text = source_for_check_call()
     args = arguments_from_check_call(text)
-    
-    try:
-        interval = grab_interval(*interval)
-    except ValueError as error:
-        print_message(text, str(error))
-        return
-    
-    result = np.logical_or(not (interval[0] <= a), not(a < interval[1]))
-    
-    if not np.all(result):
-        shape = np.shape(result)
-        if len(shape) == 1:
-            message = [ ]
-            false_indices = np.where(result == False)[0]
-            for i in false_indices[0:3]:
-                ai,av = term_and_value_at_index(args[0],a,i)
-                if ai != None:
-                    terms = ai + " and "
-                else:
-                    terms = ""
-                message += [ f"{terms}{pvalue(av)} is in interval [{interval[0]},{interval[1]})" ]
-            if len(false_indices) > 3:
-                message += [ f"... omitting {len(false_indices)-3} more case(s)" ]
-        else:
-            message = [ f"{pvalue(a)} is in interval [{interval[0]},{interval[1]})" ]
+
+    message = interval_check(args, a, interval,
+                             lambda a,interval: np.logical_or(not (interval[0] <= a), not(a < interval[1])),
+                             lambda interval: f" is in interval [{interval[0]},{interval[1]})")
+    if message != []:
         print_message(text, message)
     
+
+@doc_tag("check_between_or_equal")
+def check_not_between_or_equal(a, *interval):
+    a = arrayify(a)
+    
+    text = source_for_check_call()
+    args = arguments_from_check_call(text)
+
+    message = interval_check(args, a, interval,
+                             lambda a,interval: np.logical_or(not (interval[0] <= a), not(a <= interval[1])),
+                             lambda interval: f" is in interval [{interval[0]},{interval[1]}]")
+    if message != []:
+        print_message(text, message)
+
 
 
 
