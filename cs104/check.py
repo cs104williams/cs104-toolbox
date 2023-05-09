@@ -30,6 +30,7 @@ def in_otter():
     return False
 
 def print_message(test, message):
+    # print(message)
     if np.shape(message) != ():
         message = "\n".join(message)
 
@@ -61,7 +62,8 @@ def source_for_check_call():
 
 def pvalue(x):
     """Print a value in a readable way, either via repr or via an abbreviated np-array."""
-    if np.shape(x) == ():
+    t = type(x)
+    if t not in [ list, tuple, np.array ]:
         return repr(x)
     else:
         return np.array2string(np.array(x),separator=',',threshold=10)
@@ -77,6 +79,8 @@ def term_and_value(arg, value):
         return f"{arg} == {pvalue(value)}", value
 
 def term_and_value_at_index(arg, value, index):
+    if type(value == tuple):
+        value = list(value)
     if arg == repr(value):
         return None, value
     elif np.shape(value) == ():
@@ -86,13 +90,18 @@ def term_and_value_at_index(arg, value, index):
         return f"{arg}.item({index}) == {pvalue(value.item(index))}", value.item(index)
 
 def arrayify(x):
-    if np.shape(x) == ():
-        return x
+    if type(x) == list or type(x) == tuple:
+        return np.array(x)  
     else:
-        return np.array(x)
+        return x
     
 def binary_check(args_source, args_values, test_op, test_str):
+    message = ensure_not_dots(args_source, args_values)
+    if message != []:
+        return message
+
     result = test_op(*args_values)
+
     if not np.all(result):
         shape = np.shape(result)
         if shape == ():
@@ -123,6 +132,10 @@ def grab_interval(*interval):
     return arrayify(interval)
             
 def interval_check(args_source, a, interval, test_op, test_str):
+    message = ensure_not_dots(args_source, [a, interval])
+    if message != []:
+        return message
+    
     try:
         interval = grab_interval(*interval)
     except ValueError as err:
@@ -160,17 +173,30 @@ def ordering_check(args, a, compare_fn, message_fn):
         if len(m) > 0 and len(message) > 0:
             message += [ "" ]
         message += m
-    return message
+    return message  
 
+def ensure_not_dots(args, values):
+    message = []
+    for a,v in zip(args, values):
+        if (a != "...") and (v is ...):
+            message += [ f'{a} should not be ...']
+    return message
 
 ### Entry points
 
 @doc_tag()
 def check(a):
     a = arrayify(a)
-    
+    text = source_for_check_call()
+    args = arguments_from_check_call(text)     
+
+    message = ensure_not_dots(args, [a])
+    if message != []:
+        print_message(text, message) 
+        return
+
     if not np.all(a):
-        print_message(source_for_check_call(), "Expression is not True")
+        print_message(text, f"{pvalue(args[0])} is not True")
                 
 @doc_tag()
 def check_equal(a, b):
@@ -178,13 +204,15 @@ def check_equal(a, b):
     
     try:
         text = source_for_check_call()
-        args = arguments_from_check_call(text)   
+        args = arguments_from_check_call(text) 
+
         message = binary_check(args, [a, b], 
                                lambda x,y: x == y, 
                                lambda x,y: f"{pvalue(x)} != {pvalue(y)}")       
     except Exception as e:
         text = "Error: Cannot find source code"
         message = [ str(e) ]
+        raise e
         
     if message != []:
         print_message(text, message)
@@ -194,7 +222,8 @@ def check_close(a, b, plus_or_minus=1e-5):
     a,b = arrayify(a),arrayify(b)
     
     text = source_for_check_call()
-    args = arguments_from_check_call(text)        
+    args = arguments_from_check_call(text)  
+
     message = binary_check(args, [a, b], 
                            lambda x,y: np.isclose(x,y,atol=plus_or_minus), 
                            lambda x,y: f"{x} < {y-plus_or_minus} or {y+plus_or_minus} < {x}")
@@ -224,11 +253,42 @@ def check_less_than_or_equal(*a):
                              lambda x,y: f"{pvalue(x)} > {pvalue(y)}")
     if message != []:
         print_message(text, message)
-        
+
+@doc_tag()
+def check_greater_than(*a):
+    a = [ arrayify(x) for x in a ]
+
+    text = source_for_check_call()
+    args = arguments_from_check_call(text)    
+    message = ordering_check(args, a, 
+                             lambda x,y: x > y, 
+                             lambda x,y: f"{pvalue(x)} <= {pvalue(y)}")
+    if message != []:
+        print_message(text, message)    
+
+@doc_tag()
+def check_greater_than_or_equal(*a):
+    a = [ arrayify(x) for x in a ]
+
+    text = source_for_check_call()
+    args = arguments_from_check_call(text)    
+    message = ordering_check(args, a, 
+                             lambda x,y: x >= y, 
+                             lambda x,y: f"{pvalue(x)} < {pvalue(y)}")
+    if message != []:
+        print_message(text, message)
+
+
 @doc_tag()
 def check_type(a, t):
     text = source_for_check_call()
     args = arguments_from_check_call(text) 
+
+    message = ensure_not_dots([args[0]], [a])
+    if message != []:
+        print_message(text, message)
+        return
+
     if type(a) is not t:
         term,value = term_and_value(args[0], a)
         print_message(text, f"{term + ' and ' if term is not None else ''}{pvalue(a)} has type {type(a).__name__}, not {t.__name__}")
@@ -239,11 +299,17 @@ def check_in(a, *r):
 
     text = source_for_check_call()
     args = arguments_from_check_call(text) 
+
+    message = ensure_not_dots(args, [a, *r])
+    if message != []:
+        print_message(text, message)
+        return
+
     if len(r) == 1:
         r = arrayify(r[0])
     if a not in r:
         term,value = term_and_value(args[0], a)
-        print_message(source_for_check_call(), 
+        print_message(text, 
                       f"{term + ' and ' if term is not None else ''}{pvalue(a)} is not in {short_form_for_value(r)}")
                 
 @doc_tag()
@@ -277,8 +343,16 @@ def check_between_or_equal(a, *interval):
 @doc_tag("check")
 def check_not(a):
     a = arrayify(a)    
+    text = source_for_check_call()
+    args = arguments_from_check_call(text)        
+
+    message = ensure_not_dots(args, [a])
+    if message != []:
+        print_message(text, message)
+        return
+
     if np.all(a):
-        print_message(source_for_check_call(), "Expression is True but should be False")
+        print_message(source_for_check_call(), f"{pvalue(args)} is True but should be False")
                 
 @doc_tag()
 def check_not_equal(a, b):
@@ -329,11 +403,42 @@ def check_not_less_than_or_equal(*a):
                              lambda x,y: f"{pvalue(x)} <= {pvalue(y)}")
     if message != []:
         print_message(text, message)
-        
+
+@doc_tag("check_greater_than")
+def check_not_greater_than(*a):
+    a = [ arrayify(x) for x in a ]
+    
+    text = source_for_check_call()
+    args = arguments_from_check_call(text)    
+    message = ordering_check(args, a, 
+                             lambda x,y: x <= y, 
+                             lambda x,y: f"{pvalue(x)} > {pvalue(y)}")
+    if message != []:
+        print_message(text, message)    
+
+@doc_tag("check_greater_than_or_equal")
+def check_not_less_than_or_equal(*a):
+    a = [ arrayify(x) for x in a ]
+    
+    text = source_for_check_call()
+    args = arguments_from_check_call(text)    
+    message = ordering_check(args, a, 
+                             lambda x,y: x < y, 
+                             lambda x,y: f"{pvalue(x)} >= {pvalue(y)}")
+    if message != []:
+        print_message(text, message)
+
+
 @doc_tag("check_type")
 def check_not_type(a, t):
     text = source_for_check_call()
     args = arguments_from_check_call(text) 
+
+    message = ensure_not_dots([args[0]], [a])
+    if message != []:
+        print_message(text, message)
+        return
+
     if type(a) is t:
         term,value = term_and_value(args[0], a)        
         print_message(text, f"{term + ' and ' if term is not None else ''}{pvalue(a)} has type {t.__name__}")
@@ -344,6 +449,11 @@ def check_not_in(a, *r):
     
     text = source_for_check_call()
     args = arguments_from_check_call(text) 
+    message = ensure_not_dots(args, [a, *r])
+    if message != []:
+        print_message(text, message)
+        return
+    
     if len(r) == 1:
         r = arrayify(r[0])
     if a in r:
