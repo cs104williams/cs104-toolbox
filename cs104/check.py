@@ -167,7 +167,13 @@ def interval_check(args_source, a, interval, test_op, test_str):
 
     
 def ordering_check(args, a, compare_fn, message_fn):
-    message = []
+
+    # Do the ordering check here to avoid repeated messages about
+    #  same ... in a.
+    message = ensure_not_dots(args, a)
+    if message != []:
+        return message
+
     for i in range(len(a)-1):
         m = binary_check(args[i:i+2], a[i:i+2], compare_fn, message_fn)            
         if len(m) > 0 and len(message) > 0:

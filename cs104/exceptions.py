@@ -4,10 +4,8 @@ import uuid
 import traceback
 from IPython.core.display import display, HTML
 from IPython.core.getipython import get_ipython
-from IPython.utils.text import strip_ansi
 from ansi2html import Ansi2HTMLConverter
-import inspect
-import sys
+from textwrap import dedent
 
 def is_user_file(filename):
     return "/datascience" not in filename and \
@@ -20,7 +18,7 @@ def is_known_lib_file(filename):
            '/cs104' in filename
 
 html_prefix = \
- """<style type="text/css">
+"""<style type="text/css">
     .ansi2html-content { display: inline; white-space: pre-wrap; word-wrap: break-word; }
     .body_foreground { color: #3e424d; }
     .body_background { background-color: #FFDDDD; }
@@ -83,7 +81,7 @@ def shorten_stack(shell, etype, evalue, tb, tb_offset=None):
     # Show the stack trace in stderr
     shell.showtraceback((etype, evalue, tb), tb_offset)
 
-    text = f"""
+    text = dedent(f"""
         <div class="m-2" style="padding-left: 5px; margin-right: -20px; padding-top:20px; padding-bottom:5px; background-color:#FFDDDD;">
               {see_also}
         </div> 
@@ -101,7 +99,7 @@ def shorten_stack(shell, etype, evalue, tb, tb_offset=None):
                     color: #3e424d;  \
                     background-color:#FFDDDD;" \
              id="{id}">{full}</pre>
-    """
+        """)
     display(HTML(text))
 
 # this registers a custom exception handler for the whole current notebook
