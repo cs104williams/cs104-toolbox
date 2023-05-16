@@ -295,7 +295,14 @@ def check_type(a, t):
         print_message(text, message)
         return
 
-    if type(a) is not t:
+    ts = t
+    if t == float:
+        ts = ( np.floating, float )
+    if t == int:
+        ts = ( np.integer, int )
+
+
+    if not isinstance(a, ts):
         term,value = term_and_value(args[0], a)
         print_message(text, f"{term + ' and ' if term is not None else ''}{pvalue(a)} has type {type(a).__name__}, not {t.__name__}")
 
