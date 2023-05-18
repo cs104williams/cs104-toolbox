@@ -13,7 +13,10 @@ p__all__ = ['check',
            'check_not_less_than_or_equal',
            'check_not_between',
            'check_not_in',
-           'check_not_type'           
+           'check_not_type',
+           'approx',
+           'between',
+           'between_or_equal'       
           ]
 
 import traceback
@@ -536,30 +539,29 @@ def to_string(op):
 def negate(op):
     return ops[type(op)][2]()
 
-###
-#
-# e ::=  And(e+) | Or(e+) | Not(e) | t
-# t ::=  Rel(u, ops+, u+) | term
-#
-
 def norm(x):
     if type(x) == list or type(x) == tuple:
         x = np.array(x)  
+    if type(x) == type:
+        return x.__name__
     if type(x) != np.array:
         return str(x)
     else:
         return np.array2string(x,separator=',',threshold=10)
 
-        # value = np.array(value)
-        # return f"{arg}.item({index}) == {pvalue(value.item(index))}", value.item(index)
 
+###
+#
+# e ::=  And(e+) | Or(e+) | Not(e) | t
+# t ::=  Rel(u, ops+, u+) | term
+#
 def eval_check(line, local_ns=None):
     def text_for(x):
         return get_source_segment(line, x)
         
     def eval_node(x):
         result = eval(compile(text_for(x), '', 'eval'), globals(), local_ns)
-        if result is ...:
+        if result is ... or result is type(...):
             raise ValueError(f"{text_for(x)} should not be ...")
         return result
 
@@ -579,9 +581,9 @@ def eval_check(line, local_ns=None):
         return f'{lm}{rm}{lv} {to_string(negate(op))} {rv}'
     
     def eval_comparison(left, left_value, op, right, right_value):
-        message = [ ]
         result = eval_op(op, left_value, right_value)
         if not np.all(result):
+            message = [ ] 
             shape = np.shape(result)
             if len(shape) != 1:
                 message += [ failed_message(left, left_value, right, right_value, op) ]
@@ -591,9 +593,10 @@ def eval_check(line, local_ns=None):
                     message += [ failed_message(left, left_value, right, right_value, op, i) ]
                 if len(false_indices) > 3:
                     message += [ f"... omitting {len(false_indices)-3} more case(s)" ]
-        return message
+            return [ f'{text_for(left)} {to_string(op)} {text_for(right)} is false because' ] + [ '  ' + m for m in message ]
+        return [ ]
 
-    def eval_term(x, expecting = True):
+    def eval_term(x):
         if type(x) is Compare:
             message = [ ]
             left = x.left
@@ -601,7 +604,7 @@ def eval_check(line, local_ns=None):
             for op,right in zip(x.ops, x.comparators):
                 right_value = eval_node(right)
                 message += eval_comparison(left, left_value, 
-                                           op if expecting else negate(op), 
+                                           op,
                                            right, right_value)
                 left, left_value = right, right_value
             return message
@@ -611,40 +614,36 @@ def eval_check(line, local_ns=None):
             return [ ]
 
 
-    Do recursively next:
-
-    check failed not(a == 1 and b == 2):
-        a == 1 is true
-        b == 2 is True
-
-    check failed not(a == 2 or b == 3):
-        a == 2 or b == 2 is True
-            a == 1 is False
-                a == 1 and 1 != 2
-            b == 2 is True
-    
-
-       
-
-    
-    def eval_expr(x, expecting = True):
+    def eval_expr(x, depth = 0):
         t = type(x)
         if t is BoolOp:
             op = type(x.op)
-            messages = [ eval_expr(y, expecting) for y in x.values ]
-            results = [ (m == [ ]) for m in messages ]
-            if op == And and all(results):
+            results = [ eval_expr(y, depth + 1) for y in x.values ]
+            if op == And:
+                message = [ ]
+                for expr,result in zip(x.values, results):
+                    if result != [ ]:
+                        message += [ f'{"  " * (depth)}{x}' for x in result ]
+                return message
+            elif op == Or and not np.any([ r == [ ] for r in results]):
+                message = [ ]
+                for expr,result in zip(x.values, results):
+                    message += [ f'{"  " * (depth)}{x}' for x in result ]
+                return message
+            else:
                 return [ ]
-            elif op == Or and any(results):
-                return [ ]
-            return [ m for ms in messages for m in ms ]
         elif t is UnaryOp and type(x.op) == Not:
-            return eval_expr(x.operand, not expecting)
+            result = eval_expr(x.operand, depth + 1)
+            if result == [ ]:
+                return [  f'{"  " * depth}{text_for(x)} is false because',
+                          f'{"  " * (depth+1)}{text_for(x.operand)} is true']
+            else: 
+                return [ ]
         else:
-            return eval_term(x, expecting)
+            return eval_term(x)
         
     a = parse(line, mode='eval')
-    return eval_expr(a.body, True)
+    return eval_expr(a.body)
 
 @register_line_magic
 @needs_local_scope
@@ -692,6 +691,7 @@ class approx:
         return f'approx({self.a})'
 
     def __eq__(self, v):
+        print(v, self.a, type(v), type(self.a))
         return np.isclose(v,self.a,atol=self.plus_or_minus)
 
 
