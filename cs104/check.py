@@ -8,17 +8,18 @@ from IPython.core.magic import (register_line_magic, register_cell_magic,
 from IPython import get_ipython
 
 from ast import *
+import abc
 
 from .docs import doc_tag
 
 def in_otter():
+    """Test whether or not we are running inside Otter"""
     for frame in traceback.StackSummary.extract(traceback.walk_stack(None)):
         if frame.filename.endswith('ok_test.py'):
             return True
     return False
 
 def print_message(test, message):
-    # print(message)
     if np.shape(message) != ():
         message = "\n".join(message)
 
@@ -43,7 +44,10 @@ def source_for_check_call():
 
 ### Entry points
 
+@doc_tag
 def check(a):
+    """Verify that condition a is True, and print a warning message if it is not.
+       The parameter a can be a boolean expression or an array of booleans."""
     text = source_for_check_call()
     if not np.all(a):
         print_message(text, f"Expression is not True")
@@ -79,7 +83,7 @@ def negate(op):
 def norm(x):
     if type(x) == list or type(x) == tuple:
         x = np.array(x)  
-    if type(x) == type:
+    if type(x) == type or type(x) == abc.ABCMeta:
         return x.__name__
     if type(x) != np.array:
         return str(x)
@@ -103,10 +107,11 @@ def eval_check(line, local_ns=None):
         return result
 
     def operand_message(x, x_value, index = None):
+        # return type of how x was computed along with a normalized value string
         if index != None and type(x_value) in [ list, tuple, np.ndarray ]:
             ivalue = norm(x_value[index])
             return f'{unparse(x)}[{index}] == {ivalue} and ', ivalue
-        elif type(x) != Constant and unparse(x) != repr(x_value):
+        elif type(x) != Constant and unparse(x) != norm(x_value):
             value = norm(x_value)
             return f'{unparse(x)} == {value} and ', value
         else:
@@ -156,22 +161,12 @@ def eval_check(line, local_ns=None):
         if t is BoolOp:
             op = type(x.op)
             results = [ eval_expr(y, depth + 1) for y in x.values ]
-            if op == And:
-                message = [ ]
-                for expr,result in zip(x.values, results):
-                    if result != [ ]:
-                        message += [ f'{"  " * (depth)}{x}' for x in result ]
-                return message
-            elif op == Or and not np.any([ r == [ ] for r in results]):
-                message = [ ]
-                for expr,result in zip(x.values, results):
-                    message += [ f'{"  " * (depth)}{x}' for x in result ]
-                return message
+            if (op == And) or (op == Or and not np.any([ r == [ ] for r in results])):
+                return [ f'{"  " * (depth)}{x}' for result in results for x in result ]
             else:
                 return [ ]
         elif t is UnaryOp and type(x.op) == Not:
-            result = eval_expr(x.operand, depth + 1)
-            if result == [ ]:
+            if eval_expr(x.operand, depth + 1) == [ ]:
                 return [  f'{"  " * depth}{text_for(x)} is false because',
                           f'{"  " * (depth+1)}{text_for(x.operand)} is true']
             else: 
@@ -182,10 +177,14 @@ def eval_check(line, local_ns=None):
     a = parse(line, mode='eval')
     return eval_expr(a.body)
 
-def check_str(line, local_ns=None):
+def check_str(a, local_ns=None):
+    """Evaluates the expression a, and print a warning message if it is not true.
+       The parameter a can be any string evaluating a boolean expression or an array of booleans in the
+       local context local_ns."""
     try:
-        message = eval_check(line.lstrip(), local_ns)
-        just_eval_result = eval(compile(line.lstrip(), '', 'eval'), local_ns)
+        message = eval_check(a.lstrip(), local_ns)
+        # These two lines are a sanity check -- remove after we're sure it all works...
+        just_eval_result = eval(compile(a.lstrip(), '', 'eval'), local_ns)
         assert (message == [ ]) == just_eval_result
     except SyntaxError as e:
         message = [ f"SyntaxError: {e.args[0]}", f"{e.text}", f"{' '*(e.offset-1)}^" ]
@@ -193,11 +192,13 @@ def check_str(line, local_ns=None):
         message = [ str(e) ]
         
     if message != [ ]:
-        print_message(f'check failed: {line}', message)
+        print_message(f'check({a})', message)
 
     return None       
 
-           
+# Install a transformer that converts any call to check() into 
+# a call to check_str().  This enables us to use our own evaluator
+# when we are in an ipython environment.           
 ip = get_ipython()
 if ip != None:
     import re
@@ -236,11 +237,10 @@ class approx:
 
 
 class between:
-    def __init__(self, lo, hi,):
-        if type(lo) not in [ np.number, int, float ]:
-            raise ValueError(f"Can only create interval with numeric values, not {repr(lo)}")
-        if type(hi) not in [ np.number, int, float ]:
-            raise ValueError(f"Can only create interval with numeric values, not {repr(hi)}")
+    def __init__(self, lo, hi):
+        for x in (lo, hi):
+            if type(x) not in [ np.number, int, float ]:
+                raise ValueError(f"Can only create interval with numeric values, not {repr(x)}")
 
         self.lo = lo
         self.hi = hi
@@ -256,10 +256,9 @@ class between:
 
 class between_or_equal:
     def __init__(self, lo, hi,):
-        if type(lo) not in [ np.number, int, float ]:
-            raise ValueError(f"Can only create interval with numeric values, not {repr(lo)}")
-        if type(hi) not in [ np.number, int, float ]:
-            raise ValueError(f"Can only create interval with numeric values, not {repr(hi)}")
+        for x in (lo, hi):
+            if type(x) not in [ np.number, int, float ]:
+                raise ValueError(f"Can only create interval with numeric values, not {repr(x)}")
 
         self.lo = lo
         self.hi = hi
