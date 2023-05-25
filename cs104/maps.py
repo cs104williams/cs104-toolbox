@@ -14,7 +14,7 @@ class States(Map):
         kws = {
             "nan_fill_color": 'gray', 
             "nan_fill_opacity": 0.2,
-            "line_opacity": 0.4
+            "line_opacity": 0.3
         }
         
         kws.update(kwargs)
@@ -40,7 +40,7 @@ class Countries(Map):
         kws = {
             "nan_fill_color": 'gray', 
             "nan_fill_opacity": 0.2,
-            "line_opacity": 0.4
+            "line_opacity": 0.3
         }
         
         kws.update(kwargs)
@@ -60,8 +60,8 @@ class HopkinsForest(Map):
         
         kws = {
             "nan_fill_color": 'gray', 
-            "nan_fill_opacity": 0.3,
-            "line_opacity": 0.4
+            "nan_fill_opacity": 0.2,
+            "line_opacity": 0.3
         }
         
         kws.update(kwargs)

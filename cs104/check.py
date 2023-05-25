@@ -46,6 +46,7 @@ def source_for_check_call():
 
 @doc_tag
 def check(a):
+    print(a)
     """Verify that condition a is True, and print a warning message if it is not.
        The parameter a can be a boolean expression or an array of booleans."""
     text = source_for_check_call()
@@ -184,7 +185,7 @@ def check_str(a, local_ns=None):
     try:
         message = eval_check(a.lstrip(), local_ns)
         # These two lines are a sanity check -- remove after we're sure it all works...
-        just_eval_result = eval(compile(a.lstrip(), '', 'eval'), local_ns)
+        just_eval_result = np.all(eval(compile(a.lstrip(), '', 'eval'), local_ns))
         assert (message == [ ]) == just_eval_result
     except SyntaxError as e:
         message = [ f"SyntaxError: {e.args[0]}", f"{e.text}", f"{' '*(e.offset-1)}^" ]

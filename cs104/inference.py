@@ -84,6 +84,12 @@ def visualize_difference_from_model(statistics, observed_statistic = None, model
         plot.dot(abs(observed_statistic - model_parameter)) 
     return plot
 
+def visualize_simulation(statistics, observed_statistic = None, model_parameter = None, p_cutoff = None):
+    with Figure(1,2):
+        visualize_simulated_statistics(statistics, observed_statistic, model_parameter)
+        visualize_difference_from_model(statistics, observed_statistic, model_parameter, p_cutoff)
+
+
 def total_variation_distance(distribution1, distribution2):
     return sum(np.abs(distribution1 - distribution2)) / 2
 
@@ -101,18 +107,6 @@ def permutation_sample(table, group_column_name):
     
     return shuffled_table
 
-def bootstrap(observed_sample, num_trials, resample_statistic): 
-
-    bootstrap_statistics = make_array()
-    
-    for i in np.arange(0, num_trials): 
-        #Key: in bootstrapping we must always sample with replacement 
-        simulated_resample = boston_sample.sample()
-        
-        resample_statistic = percentile(50, simulated_resample.column('REGULAR')) #get the median for that one resample 
-        bootstrap_statistics = np.append(bootstrap_statistics, resample_statistic)
-    
-    return bootstrap_statistics
 
 ######################################################################
 # Bootstrapping: generic code that can be resued 
@@ -127,6 +121,19 @@ def percentile_method(ci_percent, bootstrap_statistics):
     left = percentile(percent_in_each_tail, bootstrap_statistics)
     right = percentile(100 - percent_in_each_tail, bootstrap_statistics)
     return make_array(left, right)
+
+def bootstrap(observed_sample, num_trials, resample_statistic): 
+
+    bootstrap_statistics = make_array()
+    
+    for i in np.arange(0, num_trials): 
+        #Key: in bootstrapping we must always sample with replacement 
+        simulated_resample = boston_sample.sample()
+        
+        resample_statistic = percentile(50, simulated_resample.column('REGULAR')) #get the median for that one resample 
+        bootstrap_statistics = np.append(bootstrap_statistics, resample_statistic)
+    
+    return bootstrap_statistics
 
 def visualize_ci(ci_percent, bootstrap_statistics):
     results = Table().with_column('Bootstrap Samples Percent Purple', bootstrap_statistics)
@@ -237,13 +244,10 @@ def plot_scatter_with_line(table, x_label, y_label, a, b):
     Draw a scatter plot of the given table data overlaid with
     a line having the given slope a and intercept b.
     """
-    x = table.column(x_label)
-    xlims = make_array(min(x), max(x))
-    y = table.column(y_label)
-    ylims = make_array(min(y), max(y))
     plot = table.scatter(x_label, y_label,
                   title='a = ' + str(round(a,3)) + '; b = ' + str(round(b,3)))
-    plot.line(xlims, a * xlims + b, lw=4,color="C0"),
+    plot.line(slope=a, intercept=b, lw=2, color="C0")
+    return plot
     
 
 
@@ -256,12 +260,26 @@ def plot_residuals(table, x_label, y_label, a, b):
     """ 
     x = table.column(x_label)
     residual = calculate_residuals(table, x_label, y_label, a, b)
-    t = Table().with_columns(x_label, x, 'residuals', residual)
-    plot = t.scatter(x_label, 'residuals', color='red', 
-              title='Residual Plot')
-    plot.line(make_array(min(x), max(x)), make_array(0,0), color='darkblue', lw=4, path_effects=None)
+    largest_residual = abs(max(residual))
+    residual_table = Table().with_columns(x_label, x, 'residuals', residual)
+    plot = residual_table.scatter(x_label, 'residuals',
+                                  color='red', 
+                                  title='Residual Plot',
+                                  ylim=1.05 * make_array(-largest_residual, largest_residual))
+    plot.line(y = 0, color='darkblue', lw=2)
+    return plot
     
 
+def plot_regression_line_and_residuals(table, x_label, y_label, a, b):
+    """
+    Left plot: a scatter plot and line for the provided table and slope/intercept
+    Right plot: The residuals of the predictions.
+    """
+    
+    with Figure(1,2):
+        plot_scatter_with_line(table, x_label, y_label, a, b)
+        plot_residuals(table, x_label, y_label, a, b)
+    
 
 ######################################################################
 # The following are more sophisticated plotting functions we used
@@ -270,7 +288,7 @@ def plot_residuals(table, x_label, y_label, a, b):
 ######################################################################
 
 
-def plot_regression_line_and_mse_heat(table, x_label, y_label, a, b, show_mse=None, a_space=None, b_space=None):
+def plot_regression_line_and_mse_heat(table, x_label, y_label, a, b, show_mse=None, a_space=None, b_space=None, _fig=None):
     """
     Left plot: the scatter plot with line y=ax+b
     Right plot: None, 2D heat map of MSE, or 3D surface plot of MSE 
@@ -281,9 +299,12 @@ def plot_regression_line_and_mse_heat(table, x_label, y_label, a, b, show_mse=No
     broadcasted = np.broadcast(a_space, b_space)
     mses = np.empty(broadcasted.shape)
     mses.flat = [mean_squared_error(table, x_label, y_label, a, b) for (a,b) in broadcasted]
-    
-    fig, ax = plots.subplots(1,2,figsize=(12,6))
-    
+        
+    if _fig is None:
+        _fig = Figure(1,2)
+        
+    ax = _fig.axes()
+
     #Plot the scatter plot and best fit line on the left
     with Plot(ax[0]):
         plot_scatter_with_line(table, x_label, y_label, a, b)
@@ -315,17 +336,3 @@ def plot_regression_line_and_mse_heat(table, x_label, y_label, a, b, show_mse=No
             ax[1].set_title('Mean Squared Error')
     
     
-def plot_regression_line_and_residuals(table, x_label, y_label, a, b):
-    """
-    Left plot: a scatter plot and line for the provided table and slope/intercept
-    Right plot: The residuals of the predictions.
-    """
-    
-    fig, ax = plots.subplots(1,2,figsize=(12,6))
-    
-    #Plot the scatter plot and best fit line on the left
-    with Plot(ax[0]):
-        plot_scatter_with_line(table, x_label, y_label, a, b)
-    
-    with Plot(ax[1]):
-        plot_residuals(table, x_label, y_label, a, b)

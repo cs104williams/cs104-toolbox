@@ -1,8 +1,9 @@
-__all__ = [ 'interact', 'CheckBox', 'Text', 'Slider', 'Choice' ] 
+__all__ = [ 'interact', 'Fixed', 'CheckBox', 'Text', 'Slider', 'Choice', 'record' ] 
            
 from IPython.display import display
-from ipywidgets import interactive, Text, interaction
+import ipywidgets
 import numpy as np
+
 
 from .docs import doc_tag
 import inspect
@@ -10,6 +11,10 @@ import inspect
 class Control: 
     def __str__(self):
         return str(self._v)
+
+class Fixed(Control):
+    def __init__(self, value=None):
+        self._v = ipywidgets.interaction.fixed(value)
 
 class CheckBox(Control):
     def __init__(self, initial=None):
@@ -21,15 +26,12 @@ class Text(Control):
 
 class Slider(Control):
     @doc_tag('interact')
-    def __init__(self, *args, step=None):
-        if np.shape(args) == (1,2):
+    def __init__(self, *args):
+        if np.shape(args) == (1,2) or np.shape(args) == (1,3):
             args = args[0]
-        elif np.shape(args) != (2,):
-                raise ValueError("You must provide two numbers to create a slider. " +
-                                 "Eg: Slider(lo,hi) or Slider(range) where a is an array [lo,hi].")
-        if step != None:
-            args = args + (step,)
-            
+        if np.shape(args) != (2,) and np.shape(args) != (3,):
+            raise ValueError(f"{args} is not a valid range for a Slider.")
+        
         self._v = args
 
 class Choice(Control):
@@ -39,8 +41,7 @@ class Choice(Control):
             args = args[0]
         self._v = list(args)
     
-@doc_tag('interact')
-def interact(f, **kwargs):
+def make_widgets(f, kwargs):
     parameter_names = inspect.signature(f).parameters.keys()
     
     missing = [p for p in parameter_names if p not in kwargs] 
@@ -53,9 +54,31 @@ def interact(f, **kwargs):
         if issubclass(type(value), Control):
             widgets[param] = value._v
         else:
-            widgets[param] = interaction.fixed(value)
+            raise ValueError(f"Parameter for {param} is not a control -- did you mean {param}=Fixed(...)?")
+    
+    return widgets
 
-    w = interactive(f, **widgets)
-    display(w)
+@doc_tag('interact')
+def interact(f, **kwargs):
+    widgets = make_widgets(f, kwargs)
+    return ipywidgets.interact(f, **widgets)
 
+def record(f, **kwargs):
+    widgets = make_widgets(f, kwargs)
+    interactor = ipywidgets.interactive(f, **widgets)
+    
+    controls = interactor.children[:-1]
+    out = ipywidgets.Textarea(f"def gen():\n    pass\n", layout=ipywidgets.Layout(width='100%', height="200px"))
+    interactor.children = (ipywidgets.Text(value='', description='_caption'),) + interactor.children + (out,)
+    
+    def changed(change):
+        args = "; ".join([ f'{c.description} = {repr(c.value)}' for c in controls ])
+        out.value = out.value.replace("    pass\n", f"    {args}\n    yield locals()\n    pass\n")
+            
+    for child in controls:
+        child.observe(changed, names='value')
+        
+    changed(None)
+
+    display(interactor)
 
