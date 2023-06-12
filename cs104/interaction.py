@@ -61,7 +61,7 @@ def make_widgets(f, kwargs):
 @doc_tag('interact')
 def interact(f, **kwargs):
     widgets = make_widgets(f, kwargs)
-    return ipywidgets.interact(f, **widgets)
+    ipywidgets.interact(f, **widgets)
 
 def record(f, **kwargs):
     widgets = make_widgets(f, kwargs)
