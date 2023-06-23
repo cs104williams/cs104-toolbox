@@ -41,8 +41,10 @@ import numpy as np
 import matplotlib.pyplot as plots
 import matplotlib.colors as colors
 
-def make_simulated_statistics(make_one_sample, sample_size,
-                              compute_sample_statistic, num_samples):
+def simulate(make_one_sample, 
+             sample_size,
+             compute_sample_statistic, 
+             num_samples):
     simulated_statistics = make_array()
     for i in np.arange(0, num_samples):
         simulated_sample = make_one_sample(sample_size)
@@ -50,10 +52,18 @@ def make_simulated_statistics(make_one_sample, sample_size,
         simulated_statistics = np.append(simulated_statistics, sample_statistic)
     return simulated_statistics
 
-def visualize_simulated_statistics(simulated_statistics, observed_statistic = None, model_parameter = None):
+def visualize_simulated_statistics(simulated_statistics, 
+                                   observed_statistic = None, 
+                                   model_parameter = None, 
+                                   p_cutoff = None):
     table = Table().with_columns("Simulated Statistics", simulated_statistics)
-    plot = table.hist("Simulated Statistics",
-                     title="Simulated Statistics")
+    
+    if p_cutoff != None:
+        left_end = percentile(100 - p_cutoff, differences)
+    else:    
+        left_end = None
+    
+    plot = table.hist("Simulated Statistics", left_end = left_end)
     if observed_statistic is not None:
         plot.dot(observed_statistic)
     if model_parameter is not None:
@@ -69,7 +79,7 @@ def calculate_pvalue(simulated_statistics, observed_statistic):
 
 def visualize_difference_from_model(statistics, observed_statistic = None, model_parameter = None, p_cutoff = None):
     differences = abs(statistics - model_parameter)
-    np.sort(differences)
+    # np.sort(differences) not needed?
     table = Table().with_columns("abs(sample statistic - model parameter)", differences)
     
     if p_cutoff != None:
@@ -112,7 +122,7 @@ def permutation_sample(table, group_column_name):
 # Bootstrapping: generic code that can be resued 
 ######################################################################
 
-def percentile_method(ci_percent, bootstrap_statistics):
+def confidence_interval(ci_percent, bootstrap_statistics):
     """
     Return an array with the lower and upper bound of the ci_percent confidence interval.
     """
@@ -122,27 +132,35 @@ def percentile_method(ci_percent, bootstrap_statistics):
     right = percentile(100 - percent_in_each_tail, bootstrap_statistics)
     return make_array(left, right)
 
-def bootstrap(observed_sample, num_trials, resample_statistic): 
+def bootstrap(observed_sample, compute_statistic, num_trials): 
 
-    bootstrap_statistics = make_array()
+    statistics = make_array()
     
     for i in np.arange(0, num_trials): 
         #Key: in bootstrapping we must always sample with replacement 
-        simulated_resample = boston_sample.sample()
+        simulated_resample = observed_sample.sample()
         
-        resample_statistic = percentile(50, simulated_resample.column('REGULAR')) #get the median for that one resample 
-        bootstrap_statistics = np.append(bootstrap_statistics, resample_statistic)
+        resample_statistic = compute_statistic(simulated_resample)
+        statistics = np.append(statistics, resample_statistic)
     
-    return bootstrap_statistics
+    return statistics
 
-def visualize_ci(ci_percent, bootstrap_statistics):
-    results = Table().with_column('Bootstrap Samples Percent Purple', bootstrap_statistics)
-    
-    mendel_plot("Mendel's garden A", observed_statistic, bootstrap_statistics)
+def visualize_confidence_interval(ci_percent, 
+                                  statistics, 
+                                  observed_statistic = None, 
+                                  model_parameter = None):
+    table = Table().with_column('Statistics', statistics)
+    plot = table.hist('Statistics')
 
-    left,right = left_right = percentile_method(ci_percent, bootstrap_statistics)
-    plots.plot(left_right, [0, 0], color='yellow', lw=8)
-    
+    left_right = confidence_interval(ci_percent, statistics)
+    plot.interval(left_right)
+
+    if observed_statistic is not None:
+        plot.dot(observed_statistic)
+    if model_parameter is not None:
+        plot.square(model_parameter)
+
+    return plot    
 
 ######################################################################
 # Linear regression: generic code that can be resued 
