@@ -41,10 +41,10 @@ import numpy as np
 import matplotlib.pyplot as plots
 import matplotlib.colors as colors
 
-def simulate(make_one_sample, 
-             sample_size,
-             compute_sample_statistic, 
-             num_samples):
+###
+
+def simulate(make_one_sample, sample_size,
+             compute_sample_statistic, num_samples):
     simulated_statistics = make_array()
     for i in np.arange(0, num_samples):
         simulated_sample = make_one_sample(sample_size)
@@ -54,16 +54,10 @@ def simulate(make_one_sample,
 
 def visualize_simulated_statistics(simulated_statistics, 
                                    observed_statistic = None, 
-                                   model_parameter = None, 
-                                   p_cutoff = None):
+                                   model_parameter = None):
     table = Table().with_columns("Simulated Statistics", simulated_statistics)
     
-    if p_cutoff != None:
-        left_end = percentile(100 - p_cutoff, differences)
-    else:    
-        left_end = None
-    
-    plot = table.hist("Simulated Statistics", left_end = left_end)
+    plot = table.hist("Simulated Statistics")
     if observed_statistic is not None:
         plot.dot(observed_statistic)
     if model_parameter is not None:
@@ -77,9 +71,11 @@ def calculate_pvalue(simulated_statistics, observed_statistic):
     """
     return np.count_nonzero(simulated_statistics >= observed_statistic) / len(simulated_statistics)
 
-def visualize_difference_from_model(statistics, observed_statistic = None, model_parameter = None, p_cutoff = None):
+def visualize_distances_from_model_parameter(statistics, 
+                                           observed_statistic = None, 
+                                           model_parameter = None, 
+                                           p_cutoff = None):
     differences = abs(statistics - model_parameter)
-    # np.sort(differences) not needed?
     table = Table().with_columns("abs(sample statistic - model parameter)", differences)
     
     if p_cutoff != None:
@@ -88,18 +84,44 @@ def visualize_difference_from_model(statistics, observed_statistic = None, model
         left_end = None
     
     plot = table.hist("abs(sample statistic - model parameter)",
-                      title="Differences from Model Parameter",
                       left_end = left_end)
     if observed_statistic is not None:
         plot.dot(abs(observed_statistic - model_parameter)) 
     return plot
 
-def visualize_simulation(statistics, observed_statistic = None, model_parameter = None, p_cutoff = None):
+def visualize_simulation_and_distances(statistics, observed_statistic = None, model_parameter = None, p_cutoff = None):
     with Figure(1,2):
         visualize_simulated_statistics(statistics, observed_statistic, model_parameter)
-        visualize_difference_from_model(statistics, observed_statistic, model_parameter, p_cutoff)
+        visualize_distances_from_model_parameter(statistics, observed_statistic, model_parameter, p_cutoff)
+
+        
+def visualize_differences_from_model_parameter(statistics, 
+                                           observed_statistic = None, 
+                                           model_parameter = None, 
+                                           p_cutoff = None):
+    differences = statistics - model_parameter
+    table = Table().with_columns("sample statistic - model parameter", differences)
+    
+    if p_cutoff != None:
+        left_end = percentile(100 - p_cutoff, differences)
+    else:    
+        left_end = None
+    
+    plot = table.hist("sample statistic - model parameter",
+                      left_end = left_end)
+    if observed_statistic is not None:
+        plot.dot(observed_statistic - model_parameter)
+    return plot
+
+def visualize_simulation_and_differences(statistics, observed_statistic = None, model_parameter = None, p_cutoff = None):
+    with Figure(1,2):
+        visualize_simulated_statistics(statistics, observed_statistic, model_parameter)
+        visualize_differences_from_model_parameter(statistics, observed_statistic, model_parameter, p_cutoff)
 
 
+
+###        
+        
 def total_variation_distance(distribution1, distribution2):
     return sum(np.abs(distribution1 - distribution2)) / 2
 
@@ -179,14 +201,6 @@ def pearson_correlation(table, x_label, y_label):
     numerator = sum((x - x_mean) * (y - y_mean)) 
     denominator = np.sqrt(sum((x - x_mean)**2)) * np.sqrt(sum((y - y_mean)**2))
     return numerator / denominator 
-
-# def plot_line(a, b, x): 
-#     """
-#     Plots a line using the give slope and intercept over the
-#     range of x-values in the x array.
-#     """
-#     xlims = make_array(min(x), max(x))
-#     plots.plot(xlims, a * xlims + b, lw=4)
     
 def line_predictions(a, b, x): 
     """
@@ -262,8 +276,7 @@ def plot_scatter_with_line(table, x_label, y_label, a, b):
     Draw a scatter plot of the given table data overlaid with
     a line having the given slope a and intercept b.
     """
-    plot = table.scatter(x_label, y_label,
-                  title='a = ' + str(round(a,3)) + '; b = ' + str(round(b,3)))
+    plot = table.scatter(x_label, y_label, title='a = ' + str(round(a,3)) + '; b = ' + str(round(b,3)))
     plot.line(slope=a, intercept=b, lw=2, color="C0")
     return plot
     
