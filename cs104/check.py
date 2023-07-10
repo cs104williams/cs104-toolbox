@@ -20,6 +20,11 @@ def in_otter():
     return False
 
 def print_message(test, message):
+    """Reports an error message for a failed test.  Both test 
+    and message should be strings.  This function prints plain text 
+    when running inside the otter grader.  Otherwise it includes
+    ANSI color codes and emojis..."""
+
     if np.shape(message) != ():
         message = "\n".join(message)
 
@@ -45,15 +50,17 @@ def source_for_check_call():
 ### Entry points
 
 @doc_tag
-def check(a):
-    """Verify that condition a is True, and print a warning message if it is not.
-       The parameter a can be a boolean expression or an array of booleans."""
+def check(condition):
+    """Verify that condition is True, and print a warning message if it is not.
+       The condition can be a boolean expression or an array of booleans.
+       """
     text = source_for_check_call()
-    if not np.all(a):
+    if not np.all(condition):
         print_message(text, f"Expression is not True")
 
 ###############
 
+# A little interpreter for Python ASTs representing boolean expressions.
 
 ops = {
     Eq     : (lambda x,y: x == y, "==", NotEq),
@@ -178,9 +185,15 @@ def eval_check(line, local_ns=None):
     return eval_expr(a.body)
 
 def check_str(a, local_ns=None):
-    """Evaluates the expression a, and print a warning message if it is not true.
-       The parameter a can be any string evaluating a boolean expression or an array of booleans in the
-       local context local_ns."""
+    """
+    Evaluates the expression a, and print a warning message if it is not true.
+    The parameter a can be any string evaluating a boolean expression or an array of booleans in the
+    local context local_ns.
+    
+    **Note:** this is intended to only be used internally by the cs104 library, and
+    only when running tests inside Jupyter notebooks.  Never call this function directly!
+    
+    """
     try:
         message = eval_check(a.lstrip(), local_ns)
         # These two lines are a sanity check -- remove after we're sure it all works...
@@ -218,7 +231,17 @@ if ip != None:
 
 
 class approx:
+    """
+    An approximate number.  Useful to capture numerical error or uncertainty 
+    of a measurement when testing conditions:
+
+    * check(x == approx(1))        # check if x is 1 ± 1e-5
+    * check(x == approx(1000, 20)) # check if x is 1000 ± 20
+    """
     def __init__(self, a, plus_or_minus=1e-5):
+        """
+        Create an approximate number a ± plus_or_minus
+        """
         if type(a) not in [ np.number, int, float ]:
             raise ValueError(f"Can only approximate numeric values, not {repr(a)}")
 
@@ -237,7 +260,17 @@ class approx:
 
 
 class between:
+    """
+    An half-closed interval useful when testing conditions:
+
+    * check(x in between(0,1))     # check if x in [0,1)
+    * check(x in between(0,10))    # check if x in [0,10)
+    """
+
     def __init__(self, lo, hi):
+        """
+        Create a half-closed interval [lo, hi).
+        """
         for x in (lo, hi):
             if type(x) not in [ np.number, int, float ]:
                 raise ValueError(f"Can only create interval with numeric values, not {repr(x)}")
@@ -255,7 +288,17 @@ class between:
         return self.lo <= v < self.hi
 
 class between_or_equal:
-    def __init__(self, lo, hi,):
+    """
+    A closed interval useful when testing conditions:
+
+    * check(x in between_or_equal(0,1))     # check if x in [0,1]
+    * check(x in between_or_equal(0,10))    # check if x in [0,10]
+    """
+
+    def __init__(self, lo, hi):
+        """
+        Create a closed interval [lo, hi].
+        """
         for x in (lo, hi):
             if type(x) not in [ np.number, int, float ]:
                 raise ValueError(f"Can only create interval with numeric values, not {repr(x)}")

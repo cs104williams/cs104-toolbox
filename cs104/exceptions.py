@@ -1,3 +1,10 @@
+"""
+Better exception reporting.  Error messages will hide stack frames
+not written by the user and insert documentation links when the
+error occurs while in a function associated with a url via the
+docs.py code.
+"""
+
 __all__ = []
 
 import uuid
@@ -7,16 +14,14 @@ from IPython.core.getipython import get_ipython
 from ansi2html import Ansi2HTMLConverter
 from textwrap import dedent
 
+# Code we can assume the user wrote.
 def is_user_file(filename):
     return "/datascience" not in filename and \
            '/site-packages' not in filename and \
            '/cs104' not in filename and \
            '.pyx' not in filename
 
-def is_known_lib_file(filename):
-    return "/datascience" in filename or \
-           '/cs104' in filename
-
+# Needed for ansi colors to work in the html we generate
 html_prefix = \
 """<style type="text/css">
     .ansi2html-content { display: inline; white-space: pre-wrap; word-wrap: break-word; }
@@ -30,6 +35,11 @@ html_prefix = \
     </style>"""
 
 def shorten_stack(shell, etype, evalue, tb, tb_offset=None): 
+    """
+    Unwind the stack back to the last function the user wrote, hide any
+    intermediate frames from libraries, insert doc link, and wrap up all that
+    in an HTML formatted error message.
+    """
     id = uuid.uuid1().hex
     
     # Take the full stack trace and convert into HTML.  
@@ -81,6 +91,7 @@ def shorten_stack(shell, etype, evalue, tb, tb_offset=None):
     # Show the stack trace in stderr
     shell.showtraceback((etype, evalue, tb), tb_offset)
 
+    # Add the doc link, as well as a link to show the full stack trace.
     text = dedent(f"""
         <div class="m-2" style="padding-left: 5px; margin-right: -20px; padding-top:20px; padding-bottom:5px; background-color:#FFDDDD;">
               {see_also}

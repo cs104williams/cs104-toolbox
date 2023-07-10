@@ -4,7 +4,7 @@ from matplotlib.animation import FuncAnimation
 from matplotlib.offsetbox import AnchoredText
 import numpy as np
 
-from IPython.display import HTML
+from IPython.display import HTML, display
 
 import inspect
 import numbers

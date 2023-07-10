@@ -1,15 +1,17 @@
+"""
+Insert a hook that saves the notebook before exporting it to avoid the common
+pitfall of not saving before exporting, and thus not having all of the outputs
+necessary to grade the manual questions.
+
+Basic idea here:
+https://stackoverflow.com/questions/66880698/how-to-cause-jupyter-lab-to-save-notebook-programmatically
+
+"""
+
 from ipylab import JupyterFrontEnd
 from ipywidgets import Output
 import otter
 
-#
-# Make a hook that saves the notebook before exporting it to avoid the common
-# pitfall of not saving before exporting, and thus not having all of the outputs
-# necessary to grade the manual questions.
-#
-# Basic idea here:
-# https://stackoverflow.com/questions/66880698/how-to-cause-jupyter-lab-to-save-notebook-programmatically
-#
 
 _orig = otter.Notebook.export
 

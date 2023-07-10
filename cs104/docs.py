@@ -1,4 +1,16 @@
 
+"""
+A package to tie library functions to their documentation entries.
+This is used to generate links in error messages to the webpage
+that decribes the offending function.  This code works in 
+conjunction with exception.py.
+
+Most of the datascience and np library functions we use are baked 
+into this module.  If there are others, use the `@doc_tag` 
+decoration to connect a function to its documentation tag.
+
+"""
+
 __all__ = [ 'doc_tag' ] 
 
 import functools
@@ -6,25 +18,11 @@ import builtins
 import numpy as np
 import datascience
 
+# The URL of the docs page.
 # _root = "http://cs.williams.edu/~cs104/auto/python-library-ref.html"
 _root = "https://cs104williams.github.io/assets/python-library-ref.html"
 
-def url(tag):
-    return _root + "#" + tag
-
-def doc_tag(tag=None):
-    def decorator_tag(func):
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            if tag is None:
-                __doc_url__ = url(func.__name__)
-            else:
-                __doc_url__ = url(tag)
-            result = func(*args, **kwargs)
-            return result
-        return wrapper
-    return decorator_tag
-
+# All of the library functions we want to link to the docs.
 libs_to_wrap = [
     (builtins, [ 
         'abs',
@@ -100,7 +98,30 @@ libs_to_wrap = [
     ]),
 ]
 
+
+def url(tag):
+    """Build a URL out of the root and a function's tag"""
+    return _root + "#" + tag
+
+def doc_tag(tag=None):
+    """
+    A function decorator that ties a function to the given tag
+    on the documentation page.
+    """
+    def decorator_tag(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            if tag is None:
+                __doc_url__ = url(func.__name__)
+            else:
+                __doc_url__ = url(tag)
+            result = func(*args, **kwargs)
+            return result
+        return wrapper
+    return decorator_tag
+
 def _wrapper(tag, fn_name, func): 
+    """The basic wrapper for a library function"""
     def call(*args, **kwargs):
         __doc_url__ = url(tag)  # special name picked up in cs104.exceptions.
         return func(*args, **kwargs)
@@ -110,6 +131,7 @@ def _wrapper(tag, fn_name, func):
     return wrapper
 
 def _wrapper_static(tag, fn_name, module, func): 
+    """The wrapper for a static library function"""
     @classmethod
     def call(*args, **kwargs):
         __doc_url__ = url(tag)   # special name picked up in cs104.exceptions.
@@ -119,6 +141,8 @@ def _wrapper_static(tag, fn_name, module, func):
     wrapper.__name__ = fn_name
     return wrapper
 
+# Iterate over all functions to wrap, calling the appropriate
+# wrapper function on each.
 for module, fn_names in libs_to_wrap:
     for fn_name in fn_names:
         if type(fn_name) == str:
