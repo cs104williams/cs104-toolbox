@@ -44,8 +44,10 @@ def source_for_check_call():
     # a test function directly
     # Actually fourth with the doc tags...
     tbo = traceback.extract_stack()
-    assert tbo[-4].line, "The cs104 library should only be used inside a Jupyter notebook or ipython..."
-    return tbo[-4].line
+    if tbo[-4].line == "":
+        return "Failed check"
+    else:
+        return tbo[-4].line
 
 ### Entry points
 
@@ -55,8 +57,13 @@ def check(condition):
        The condition can be a boolean expression or an array of booleans.
        """
     text = source_for_check_call()
-    if not np.all(condition):
-        print_message(text, f"Expression is not True")
+    if type(condition) == bool or \
+        type(condition) == np.ndarray and condition.dtype == bool:
+        if not np.all(condition):
+            print_message(text, f"Expression is not True")
+    else:
+        raise ValueError("Argument to check should not be a boolean or array of booleans")
+
 
 ###############
 
