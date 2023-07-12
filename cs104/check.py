@@ -49,7 +49,7 @@ def source_for_check_call():
 
 ### Entry points
 
-@doc_tag
+@doc_tag()
 def check(condition):
     """Verify that condition is True, and print a warning message if it is not.
        The condition can be a boolean expression or an array of booleans.
@@ -109,7 +109,7 @@ def eval_check(line, local_ns=None):
         
     def eval_node(x):
         result = eval(compile(text_for(x), '', 'eval'), globals(), local_ns)
-        if result is ... or result is type(...):
+        if text_for(x) != '...' and (result is ... or result is type(...)):
             raise ValueError(f"{text_for(x)} should not be ...")
         return result
 
