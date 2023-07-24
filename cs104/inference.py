@@ -43,96 +43,58 @@ import matplotlib.colors as colors
 
 ###
 
-def simulate(make_one_sample, sample_size,
-             compute_sample_statistic, num_samples):
+def simulate(compute_outcome, num_outcomes):
+    outcomes = make_array()
+    for i in np.arange(0, num_outcomes):
+        outcome = compute_outcome()
+        outcomes = np.append(outcomes, outcome)
+    return outcomes
+
+def plot_distribution(samples, 
+                  p_cutoff = None,
+                  bins=None):
+    label = "Values"
+    table = Table().with_columns(label, samples)
+
+    if p_cutoff != None:
+        left_end = percentile(100 - p_cutoff, samples)
+    else:    
+        left_end = None
+    
+    plot = table.hist(label, left_end = left_end, bins=bins)
+    return plot
+
+def simulate_sample_statistic(make_sample, sample_size,
+                              compute_sample_statistic, num_samples):
+    
     simulated_statistics = make_array()
     for i in np.arange(0, num_samples):
-        simulated_sample = make_one_sample(sample_size)
+        simulated_sample = make_sample(sample_size)
         sample_statistic = compute_sample_statistic(simulated_sample)
         simulated_statistics = np.append(simulated_statistics, sample_statistic)
     return simulated_statistics
 
-def visualize_simulated_statistics(simulated_statistics, 
-                                   observed_statistic = None, 
-                                   model_parameter = None):
-    table = Table().with_columns("Simulated Statistics", simulated_statistics)
-    
-    plot = table.hist("Simulated Statistics")
-    if observed_statistic is not None:
-        plot.dot(observed_statistic)
-    if model_parameter is not None:
-        plot.square(model_parameter)
-    return plot
-
-def calculate_pvalue(simulated_statistics, observed_statistic): 
+def pvalue_for_observed(simulated_statistics, observed_statistic): 
     """
     Return the proportion of the simulated statistics that are greater than 
     or equal to the observed statistic
     """
     return np.count_nonzero(simulated_statistics >= observed_statistic) / len(simulated_statistics)
 
-def visualize_distances_from_model_parameter(statistics, 
-                                           observed_statistic = None, 
-                                           model_parameter = None, 
-                                           p_cutoff = None):
-    differences = abs(statistics - model_parameter)
-    table = Table().with_columns("abs(sample statistic - model parameter)", differences)
-    
-    if p_cutoff != None:
-        left_end = percentile(100 - p_cutoff, differences)
-    else:    
-        left_end = None
-    
-    plot = table.hist("abs(sample statistic - model parameter)",
-                      left_end = left_end)
-    if observed_statistic is not None:
-        plot.dot(abs(observed_statistic - model_parameter)) 
-    return plot
-
-def visualize_simulation_and_distances(statistics, observed_statistic = None, model_parameter = None, p_cutoff = None):
-    with Figure(1,2):
-        visualize_simulated_statistics(statistics, observed_statistic, model_parameter)
-        visualize_distances_from_model_parameter(statistics, observed_statistic, model_parameter, p_cutoff)
-
-        
-def visualize_differences_from_model_parameter(statistics, 
-                                           observed_statistic = None, 
-                                           model_parameter = None, 
-                                           p_cutoff = None):
-    differences = statistics - model_parameter
-    table = Table().with_columns("sample statistic - model parameter", differences)
-    
-    if p_cutoff != None:
-        left_end = percentile(100 - p_cutoff, differences)
-    else:    
-        left_end = None
-    
-    plot = table.hist("sample statistic - model parameter",
-                      left_end = left_end)
-    if observed_statistic is not None:
-        plot.dot(observed_statistic - model_parameter)
-    return plot
-
-def visualize_simulation_and_differences(statistics, observed_statistic = None, model_parameter = None, p_cutoff = None):
-    with Figure(1,2):
-        visualize_simulated_statistics(statistics, observed_statistic, model_parameter)
-        visualize_differences_from_model_parameter(statistics, observed_statistic, model_parameter, p_cutoff)
-
-
 
 ###        
         
-def total_variation_distance(distribution1, distribution2):
-    return sum(np.abs(distribution1 - distribution2)) / 2
+# def total_variation_distance(distribution1, distribution2):
+#     return sum(np.abs(distribution1 - distribution2)) / 2
 
-def permutation_sample(table, group_column_name):
+def permutation_sample(table, group_column_label):
     """
     Returns: The table with a new "Shuffled Label" column containing
     the shuffled values of the group column.
     """
     
     # array of shuffled labels
-    shuffled_labels = table.sample(with_replacement=False).column(group_column_name)
+    shuffled_labels = table.sample(with_replacement=False).column(group_column_label)
     
     # table of numerical variable and shuffled labels
     shuffled_table = table.with_column('Shuffled Label', shuffled_labels)
@@ -167,22 +129,17 @@ def bootstrap(observed_sample, compute_statistic, num_trials):
     
     return statistics
 
-def visualize_confidence_interval(ci_percent, 
-                                  statistics, 
-                                  observed_statistic = None, 
-                                  model_parameter = None):
-    table = Table().with_column('Statistics', statistics)
-    plot = table.hist('Statistics')
+# def plot_confidence_interval(ci_percent, 
+#                             statistics, 
+#                             observed_statistic = None, 
+#                             model_parameter = None):
+#     table = Table().with_column('Statistics', statistics)
+#     plot = table.hist('Statistics')
 
-    left_right = confidence_interval(ci_percent, statistics)
-    plot.interval(left_right)
+#     left_right = confidence_interval(ci_percent, statistics)
+#     plot.interval(left_right)
 
-    if observed_statistic is not None:
-        plot.dot(observed_statistic)
-    if model_parameter is not None:
-        plot.square(model_parameter)
-
-    return plot    
+#     return plot    
 
 ######################################################################
 # Linear regression: generic code that can be resued 
@@ -243,7 +200,7 @@ def linear_regression(table, x_label, y_label):
     # to find the optimal a and b for our mean squared error function 
     return minimize(mse_for_a_b)
 
-def calculate_residuals(table, x_label, y_label, a, b): 
+def residuals(table, x_label, y_label, a, b): 
     """
     Residuals = y - y_hat 
     where y_hat are the predictions from the line characterized by 
@@ -260,7 +217,7 @@ def r2_score(table, x_label, y_label, a, b):
     R-squared score (also called the "coefficient of determination")
     for the predictions given y=ax+b
     """ 
-    residual = calculate_residuals(table, x_label, y_label, a, b)
+    residual = residuals(table, x_label, y_label, a, b)
     numerator = sum(residual**2)
     y = table.column(y_label)
     y_mean = np.mean(y)
@@ -290,7 +247,7 @@ def plot_residuals(table, x_label, y_label, a, b):
     Also plots the y=0 horizontal line 
     """ 
     x = table.column(x_label)
-    residual = calculate_residuals(table, x_label, y_label, a, b)
+    residual = residuals(table, x_label, y_label, a, b)
     largest_residual = abs(max(residual))
     residual_table = Table().with_columns(x_label, x, 'residuals', residual)
     plot = residual_table.scatter(x_label, 'residuals',
@@ -301,7 +258,7 @@ def plot_residuals(table, x_label, y_label, a, b):
     return plot
     
 
-def plot_regression_line_and_residuals(table, x_label, y_label, a, b):
+def plot_full_regression(table, x_label, y_label, a, b):
     """
     Left plot: a scatter plot and line for the provided table and slope/intercept
     Right plot: The residuals of the predictions.
