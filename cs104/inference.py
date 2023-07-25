@@ -50,7 +50,7 @@ def simulate(compute_outcome, num_outcomes):
         outcomes = np.append(outcomes, outcome)
     return outcomes
 
-def plot_distribution(samples, 
+def array_hist(samples, 
                   p_cutoff = None,
                   bins=None):
     label = "Values"
