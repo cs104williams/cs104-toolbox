@@ -3,6 +3,9 @@ Better exception reporting.  Error messages will hide stack frames
 not written by the user and insert documentation links when the
 error occurs while in a function associated with a url via the
 docs.py code.
+
+Set the CS104_DISABLE_EXC_FORMAT environment variable to 1 to 
+disable this feature.
 """
 
 __all__ = []
@@ -13,6 +16,7 @@ from IPython.core.display import display, HTML
 from IPython.core.getipython import get_ipython
 from ansi2html import Ansi2HTMLConverter
 from textwrap import dedent
+import os
 
 # Code we can assume the user wrote.
 def is_user_file(filename):
@@ -112,11 +116,12 @@ def shorten_stack(shell, etype, evalue, tb, tb_offset=None):
              id="{id}">{full}</pre>
         """)
     display(HTML(text))
-
-# this registers a custom exception handler for the whole current notebook
-try:
-    ipy = get_ipython()
-    if ipy != None:
-        ipy.set_custom_exc((Exception,), shorten_stack)
-except NameError:
-    pass
+  
+if os.getenv('CS104_DISABLE_EXC_FORMAT', '0') != '1':
+    # this registers a custom exception handler for the whole current notebook
+    try:
+        ipy = get_ipython()
+        if ipy != None:
+            ipy.set_custom_exc((Exception,), shorten_stack)
+    except NameError:
+        pass

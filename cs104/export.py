@@ -11,7 +11,7 @@ https://stackoverflow.com/questions/66880698/how-to-cause-jupyter-lab-to-save-no
 from ipylab import JupyterFrontEnd
 from ipywidgets import Output
 import otter
-
+import time
 
 _orig = otter.Notebook.export
 
@@ -23,6 +23,7 @@ def _call(*args, **kwargs):
             with out:
                 print("Saving notebook...")
                 app.commands.execute('docmanager:save')
+                time.sleep(5)
                 print("Exporting notebook...")
                 _orig(*args, **kwargs)
         app.on_ready(save)
