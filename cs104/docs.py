@@ -128,6 +128,7 @@ def _wrapper(tag, fn_name, func):
     
     wrapper = call
     wrapper.__name__ = fn_name
+    wrapper.__doc__ = func.__doc__
     return wrapper
 
 def _wrapper_static(tag, fn_name, module, func): 
@@ -139,6 +140,7 @@ def _wrapper_static(tag, fn_name, module, func):
     
     wrapper = call
     wrapper.__name__ = fn_name
+    wrapper.__doc__ = func.__doc__
     return wrapper
 
 # Iterate over all functions to wrap, calling the appropriate

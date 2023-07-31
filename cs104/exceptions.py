@@ -95,33 +95,33 @@ def shorten_stack(shell, etype, evalue, tb, tb_offset=None):
     # Show the stack trace in stderr
     shell.showtraceback((etype, evalue, tb), tb_offset)
 
-    # Add the doc link, as well as a link to show the full stack trace.
-    text = dedent(f"""
-        <div class="m-2" style="padding-left: 5px; margin-right: -20px; padding-top:20px; padding-bottom:5px; background-color:#FFDDDD;">
-              {see_also}
-        </div> 
-          <div align="right" style="margin-right: -20px;"> \
-            <a style='inherit;font-size:12px;'  \
-               onclick='var x = document.getElementById("{id}"); \
-               if (x.style.display === "none") \
-                 x.style.display = "block"; \
-                 else x.style.display = "none";'> \
-              Full Details
-            </a>
-          </div>
-        <pre style="margin-right: -20px; \
-                    font-size:14px;display:none; \
-                    color: #3e424d;  \
-                    background-color:#FFDDDD;" \
-             id="{id}">{full}</pre>
-        """)
-    display(HTML(text))
+    if os.getenv('CS104_DISABLE_EXC_FORMAT', '0') != '1':
+        # Add the doc link, as well as a link to show the full stack trace.
+        text = dedent(f"""
+            <div class="m-2" style="padding-left: 5px; margin-right: -20px; padding-top:20px; padding-bottom:5px; background-color:#FFDDDD;">
+                {see_also}
+            </div> 
+            <div align="right" style="margin-right: -20px;"> \
+                <a style='inherit;font-size:12px;'  \
+                onclick='var x = document.getElementById("{id}"); \
+                if (x.style.display === "none") \
+                    x.style.display = "block"; \
+                    else x.style.display = "none";'> \
+                Full Details
+                </a>
+            </div>
+            <pre style="margin-right: -20px; \
+                        font-size:14px;display:none; \
+                        color: #3e424d;  \
+                        background-color:#FFDDDD;" \
+                id="{id}">{full}</pre>
+            """)
+        display(HTML(text))
   
-if os.getenv('CS104_DISABLE_EXC_FORMAT', '0') != '1':
-    # this registers a custom exception handler for the whole current notebook
-    try:
-        ipy = get_ipython()
-        if ipy != None:
-            ipy.set_custom_exc((Exception,), shorten_stack)
-    except NameError:
-        pass
+# this registers a custom exception handler for the whole current notebook
+try:
+    ipy = get_ipython()
+    if ipy != None:
+        ipy.set_custom_exc((Exception,), shorten_stack)
+except NameError:
+    pass
