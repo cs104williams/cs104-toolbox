@@ -22,7 +22,7 @@ class States(Map):
         kws.setdefault('legend_name',table.labels[1])
         t = Table().with_columns("geo", table.column(0),
                                  "values", table.column(1))
-        return states.color(t, **kws)
+        states.color(t, **kws).show()
 
     def _autozoom(self):
         """Calculate zoom and location."""
@@ -49,7 +49,7 @@ class Countries(Map):
 
         t = Table().with_columns("geo", table.apply(lambda x: x.upper(), 0),
                                  "values", table.column(1))
-        return countries.color(t, **kws)
+        countries.color(t, **kws).show()
         
 class HopkinsForest(Map):
 
@@ -69,7 +69,7 @@ class HopkinsForest(Map):
 
         t = Table().with_columns("geo", table.column(0),
                                  "values", table.column(1))
-        return countries.color(t, **kws)
+        countries.color(t, **kws).show()
         
     def _autozoom(self):
         attrs = super()._autozoom()
