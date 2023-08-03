@@ -3,6 +3,15 @@ from datascience import *
 import numpy as np
 import pkg_resources
 
+def check_table(t):
+    if t.num_columns < 2:
+        ValueError("Table must have atleast two columns")
+    if t.column(0).dtype.kind not in ['S', 'U']:
+        ValueError("The first column passed to map_table must contain strings")
+    if t.column(1).dtype.kind not in ['b', 'u', 'i', 'f', 'c']:
+        ValueError("The second column passed to map_table must contain numeric values")
+
+
 class States(Map):
     
     _default_lat_lon = [48, -102]
@@ -44,6 +53,8 @@ class Countries(Map):
         }
         
         kws.update(kwargs)
+
+        check_table(table)
 
         kws.setdefault('legend_name',table.labels[1])
 
