@@ -228,7 +228,7 @@ if ip != None:
             m = re.match(r'check\((.*)\)', line)
             if m:
                 escaped = m.group(1).replace("'", "\\'")
-                new_lines.append(f"check_str('{escaped}', locals())")
+                new_lines.append(f"check_str('{escaped}', locals())\n")
             else:
                 new_lines.append(line)
         return new_lines
