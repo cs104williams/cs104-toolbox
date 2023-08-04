@@ -6,10 +6,12 @@ import pkg_resources
 def check_table(t):
     if t.num_columns < 2:
         ValueError("Table must have atleast two columns")
-    if t.column(0).dtype.kind not in ['S', 'U']:
-        ValueError("The first column passed to map_table must contain strings")
-    if t.column(1).dtype.kind not in ['b', 'u', 'i', 'f', 'c']:
-        ValueError("The second column passed to map_table must contain numeric values")
+    geo_col = t.column(0)
+    if not np.issubdtype(geo_col.dtype, np.character):
+        raise ValueError("The first column passed to map_table must contain strings")
+    num_col = t.column(1)
+    if not np.issubdtype(num_col.dtype, np.number):
+        raise ValueError("The second column passed to map_table must contain numeric values")
 
 
 class States(Map):
