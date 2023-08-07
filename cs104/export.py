@@ -23,7 +23,10 @@ def _call(*args, **kwargs):
             with out:
                 print("Saving notebook...")
                 app.commands.execute('docmanager:save')
-                time.sleep(5)
+                # There is a race condition here: The save is asynchronous,
+                # and we don't want to continue until it completes.  The
+                # sleep is annoying but delays things long enough...
+                time.sleep(5) 
                 print("Exporting notebook...")
                 _orig(*args, **kwargs)
         app.on_ready(save)
