@@ -18,8 +18,8 @@ import builtins
 import numpy as np
 import datascience
 
-# The URL of the docs page.
-# _root = "http://cs.williams.edu/~cs104/auto/python-library-ref.html"
+# The URL of the docs page -- use the indirect on github to avoid
+# being dependent on where the local pages are installed...
 _root = "https://cs104williams.github.io/assets/python-library-ref.html"
 
 # All of the library functions we want to link to the docs.

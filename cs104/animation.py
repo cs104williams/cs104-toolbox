@@ -1,4 +1,4 @@
-from datascience import Plot, Figure
+from datascience import Figure
 from matplotlib import pyplot as plots
 from matplotlib.animation import FuncAnimation
 from matplotlib.offsetbox import AnchoredText
@@ -10,6 +10,22 @@ import inspect
 import numbers
 
 def animate(f, gen, interval=100, default_mode=None, fig=None, show_params=True, **kwargs):
+    """
+    Animate a series of calls to the function f.  That function should create 
+    a single plot.
+
+    The gen parameter should be a generator function that returns a map from f's 
+    parameters to their values.  Successive calls to gen returns the values for 
+    successive frames.  Optional arguments:
+
+    * interval: the time step, in ms.
+    * default_mode: the mode for the player.  Options are "Once", "Repeat, "Rewind".
+    * fig: pass in a matplot lib Figure if you do not want the function to create a new figure for
+        the animation.
+    * show_params: Show the parameters to f in a box to the side of the figure.
+    * **kwargs: Any additional kwargs are pass to the constructor for Figure.  Requires fig
+        to be None.
+    """
 
     kwargs = kwargs.copy()
     kwargs.setdefault('figsize', (8, 5))

@@ -27,16 +27,18 @@ def is_user_file(filename):
 
 # Needed for ansi colors to work in the html we generate
 html_prefix = \
-"""<style type="text/css">
-    .ansi2html-content { display: inline; white-space: pre-wrap; word-wrap: break-word; }
-    .body_foreground { color: #3e424d; }
-    .body_background { background-color: #FFDDDD; }
-    .ansi1 { font-weight: bold; }
-    .ansi31 { color: #e75c58; }
-    .ansi32 { color: #00a250; }
-    .ansi34 { color: #208ffb; }
-    .ansi36 { color: #60c6c8; }
-    </style>"""
+"""
+<style type="text/css">
+.ansi2html-content { display: inline; white-space: pre-wrap; word-wrap: break-word; }
+.body_foreground { color: #3e424d; }
+.body_background { background-color: #FFDDDD; }
+.ansi1 { font-weight: bold; }
+.ansi31 { color: #e75c58; }
+.ansi32 { color: #00a250; }
+.ansi34 { color: #208ffb; }
+.ansi36 { color: #60c6c8; }
+</style>
+"""
 
 def shorten_stack(shell, etype, evalue, tb, tb_offset=None): 
     """

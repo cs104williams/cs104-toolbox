@@ -1,12 +1,14 @@
+"""
+Support for writing tests, including a general check function that prints
+a reasonable error message if a test fails and supporting objects to 
+represent approximate values and intervals.
+"""
+
 __all__ = ['check', 'check_str', 'approx', 'between', 'between_or_equal' ]
 
 import traceback
 import numpy as np
 from textwrap import indent
-from IPython.core.magic import (register_line_magic, register_cell_magic,
-                                register_line_cell_magic, needs_local_scope)
-from IPython import get_ipython
-
 from ast import *
 import abc
 
@@ -40,9 +42,11 @@ def print_message(test, message):
         print(indent(message.strip(), "      "))
 
 def source_for_check_call():
-    # The frame with the test call is the third from the top if we call 
-    # a test function directly
-    # Actually fourth with the doc tags...
+    """
+    The frame with the test call is the third from the top if we call 
+    a test function directly.
+    Actually fourth with the doc tags...
+    """
     tbo = traceback.extract_stack()
     if tbo[-4].line == "":
         return "Failed check"
@@ -53,9 +57,10 @@ def source_for_check_call():
 
 @doc_tag()
 def check(condition):
-    """Verify that condition is True, and print a warning message if it is not.
-       The condition can be a boolean expression or an array of booleans.
-       """
+    """
+    Verify that condition is True, and print a warning message if it is not.
+    The condition can be a boolean expression or an array of booleans.
+    """
     text = source_for_check_call()
     if type(condition) == bool or \
         type(condition) == np.ndarray and condition.dtype == bool:
@@ -95,6 +100,10 @@ def negate(op):
     return ops[type(op)][2]()
 
 def norm(x):
+    """
+    Normalize the output of lists/tuples/arrays, and avoid printing
+    values that are waaay too long.
+    """
     if type(x) == list or type(x) == tuple:
         x = np.array(x)  
     if type(x) == type or type(x) == abc.ABCMeta:
@@ -104,24 +113,42 @@ def norm(x):
     else:
         return np.array2string(x,separator=',',threshold=10)
 
-
-###
-#
-# e ::=  And(e+) | Or(e+) | Not(e) | t
-# t ::=  Rel(u, ops+, u+) | term
-#
 def eval_check(line, local_ns=None):
+    """
+    An evaluator for boolean expressions from the Python grammer:
+    
+        e ::=  And(e+) | Or(e+) | Not(e) | t
+        t ::=  Rel(u, ops+, u+) | term
+
+    local_ns should be the value of variables appearing in the line of code.
+    Returns a list of lines making up an error message, if the expression is False,
+    or an empty list of the expression is True.
+    """
+
     def text_for(x):
+        """
+        Return the source text corresponding to an AST node x.
+        """
         return get_source_segment(line, x)
         
     def eval_node(x):
+        """
+        Evaluate the AST node x.
+        """
         result = eval(compile(text_for(x), '', 'eval'), globals(), local_ns)
+
+        # special error if one of the variables is ..., and not be design
         if text_for(x) != '...' and (result is ... or result is type(...)):
             raise ValueError(f"{text_for(x)} should not be ...")
+        
         return result
 
     def operand_message(x, x_value, index = None):
-        # return type of how x was computed along with a normalized value string
+        """
+        Return a string showing the value of variable x or index term x[i],
+        as well as the value computed by that expr.  Use normalized value strings
+        to avoid too much output...
+        """
         if index != None and type(x_value) in [ list, tuple, np.ndarray ]:
             ivalue = norm(x_value[index])
             return f'{unparse(x)}[{index}] == {ivalue} and ', ivalue
@@ -149,7 +176,8 @@ def eval_check(line, local_ns=None):
                     message += [ failed_message(left, left_value, right, right_value, op, i) ]
                 if len(false_indices) > 3:
                     message += [ f"... omitting {len(false_indices)-3} more case(s)" ]
-            return [ f'{text_for(left)} {to_string(op)} {text_for(right)} is false because' ] + [ '  ' + m for m in message ]
+            return [ f'{text_for(left)} {to_string(op)} {text_for(right)} is false because' ] + \
+                   [ '  ' + m for m in message ]
         return [ ]
 
     def eval_term(x):
@@ -203,9 +231,6 @@ def check_str(a, local_ns=None):
     """
     try:
         message = eval_check(a.lstrip(), local_ns)
-        # These two lines are a sanity check -- remove after we're sure it all works...
-        # just_eval_result = np.all(eval(compile(a.lstrip(), '', 'eval'), local_ns))
-        # assert (message == [ ]) == just_eval_result
     except SyntaxError as e:
         message = [ f"SyntaxError: {e.args[0]}", f"{e.text}", f"{' '*(e.offset-1)}^" ]
     except Exception as e:
@@ -219,21 +244,25 @@ def check_str(a, local_ns=None):
 # Install a transformer that converts any call to check() into 
 # a call to check_str().  This enables us to use our own evaluator
 # when we are in an ipython environment.           
-ip = get_ipython()
-if ip != None:
-    import re
-    def checkify(lines):
-        new_lines = []
-        for line in lines:
-            m = re.match(r'check\((.*)\)', line)
-            if m:
-                escaped = m.group(1).replace("'", "\\'")
-                new_lines.append(f"check_str('{escaped}', locals())\n")
-            else:
-                new_lines.append(line)
-        return new_lines
+try:
+    from IPython import get_ipython
+    ip = get_ipython()
+    if ip != None:
+        import re
+        def checkify(lines):
+            new_lines = []
+            for line in lines:
+                m = re.match(r'check\((.*)\)', line)
+                if m:
+                    escaped = m.group(1).replace("'", "\\'")
+                    new_lines.append(f"check_str('{escaped}', locals())\n")
+                else:
+                    new_lines.append(line)
+            return new_lines
 
-    ip.input_transformers_cleanup.append(checkify)           
+        ip.input_transformers_cleanup.append(checkify)           
+except NameError:
+    pass
 
 
 

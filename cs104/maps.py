@@ -1,9 +1,21 @@
+"""
+Utilities to facilitate drawing choropleths for three kinds of 
+geographic data: state-level, country-level, and Hopkins Forst plot-level.
+
+The datascience package contains general plotting functions.  These
+are designed to make it easier in 104 for specific use cases.
+"""
+
+__all__ = [ 'States', 'Countries', 'HopkinsForest' ]
 
 from datascience import *
 import numpy as np
 import pkg_resources
 
 def check_table(t):
+    """
+    Make sure table t has strings and numbers in the first two columns.
+    """
     if t.num_columns < 2:
         ValueError("Table must have atleast two columns")
     geo_col = t.column(0)
@@ -20,6 +32,18 @@ class States(Map):
     _default_zoom = 3
     
     def map_table(table, **kwargs):
+        """
+        Create a choropleth for states.  The table should contain the two letter state
+        codes in the first column, and numeric values in the second.
+
+        The kwargs can include:
+
+        * bins: A description of how to bin the data, in the same form as the
+            table's hist() method.
+        * pallette: Any of the matplitlib color maps.
+            (https://matplotlib.org/stable/tutorials/colors/colormaps.html)
+
+        """
         states = States.read_geojson(pkg_resources.resource_filename(__name__, 'data/us-states.json'))
         
         kws = {
@@ -46,6 +70,21 @@ class States(Map):
 class Countries(Map):
     
     def map_table(table, **kwargs):
+        """
+        Create a choropleth for countries.  The table should contain the three-letter 
+        country codes in the first column and numeric values in the second.  See here
+        for country codes: https://en.wikipedia.org/wiki/ISO_3166-1_alpha-3#Current_codes.
+        The codes may be uppercase or lowercase.
+
+        The kwargs can include:
+
+        * bins: A description of how to bin the data, in the same form as the
+            table's hist() method.
+        * pallette: Any of the matplitlib color maps.
+            (https://matplotlib.org/stable/tutorials/colors/colormaps.html)
+
+        """
+
         countries = Countries.read_geojson(pkg_resources.resource_filename(__name__, 'data/world-countries.json'))
         
         kws = {
@@ -69,6 +108,19 @@ class HopkinsForest(Map):
     _default_zoom = 15
     
     def map_table(table, **kwargs):
+        """
+        Create a choropleth for Hopkins Forest.  The table should contain the plot codes 
+        in the first column and numeric values in the second.  Plot codes have the form
+        'p00-1' or 'p1339', based on the map present in lecture 1.  
+
+        The kwargs can include:
+
+        * bins: A description of how to bin the data, in the same form as the
+            table's hist() method.
+        * pallette: Any of the matplitlib color maps.
+            (https://matplotlib.org/stable/tutorials/colors/colormaps.html)
+
+        """
         countries = HopkinsForest.read_geojson(pkg_resources.resource_filename(__name__, 'data/hopkins-forest.json'))
         
         kws = {
