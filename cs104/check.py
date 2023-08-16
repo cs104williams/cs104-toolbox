@@ -152,7 +152,7 @@ def eval_check(line, local_ns=None):
         if index != None and type(x_value) in [ list, tuple, np.ndarray ]:
             ivalue = norm(x_value[index])
             return f'{unparse(x)}[{index}] == {ivalue} and ', ivalue
-        elif type(x) != Constant and unparse(x) != norm(x_value):
+        elif type(x) != Constant and type(x_value) not in [ approx, between, between_or_equal ] and unparse(x) != norm(x_value):
             value = norm(x_value)
             return f'{unparse(x)} == {value} and ', value
         else:
