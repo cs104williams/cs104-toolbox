@@ -1,37 +1,11 @@
 """
-CS 104 code that can be resused for statistical inference such as bootstrapping 
+CS 104 code that can be reused for statistical inference such as bootstrapping 
 and linear regression.
 
-1. Bootstrap.  
+See the following for documentation:
 
-    You will typically need to implement your own bootstrapping
-    function, such as in the notebooks for our Bootstrapping and
-    Confidence Interval lectures.  We provide here the
-   
-        percentile_method(ci_percent, statistics)
-   
-    function for computing confidence intervals.
-   
-2. Linear Regression.
+https://cs104williams.github.io/assets/inference-library-ref.html
 
-    The most important function for linear regressions is the function
-     
-         linear_regression(table, x_label, y_label)
-
-    that returns an array containing the slope and intercept of the line 
-    best fitting  the table's data according to the mean square error loss 
-    function.  We also provide several diagnostic functions to help you
-    determine the strength of correlation quality of the fit.  The first
-    two are numeric.  The last two are visual.
-    
-        pearson_correlation(table, x_label, y_label)
-        r2_score(table, x_label, y_label, a, b)
-        plot_scatter_with_line(table, x_label, y_label, a, b)
-        plot_residuals(table, x_label, y_label, a, b)
-
-    The most typical use case is to first call linear_regression to get the
-    regression line, and then inspect its quality numerically and visually.
-    
 """
 
 # __all__ = [ 'linear_regression' ]
@@ -41,52 +15,72 @@ import numpy as np
 import matplotlib.pyplot as plots
 import matplotlib.colors as colors
 
+from .docs import doc_tag
+
 ###
 
-def simulate(compute_outcome, num_outcomes):
-    outcomes = make_array()
-    for i in np.arange(0, num_outcomes):
-        outcome = compute_outcome()
-        outcomes = np.append(outcomes, outcome)
-    return outcomes
+# This is not general enough to handle all of the cases we see early on,
+# so let's wait until the sample statistics to introduce a simulation function
+# (Though this may make a nice example for lecture/lab/midterm...)
+#
+# def simulate(compute_outcome, num_outcomes):
+#     outcomes = make_array()
+#     for i in np.arange(0, num_outcomes):
+#         outcome = compute_outcome()
+#         outcomes = np.append(outcomes, outcome)
+#     return outcomes
 
-def array_hist(samples, 
-                  p_cutoff = None,
-                  bins=None):
+@doc_tag(path='inference-library-ref.html')
+def array_hist(values, **kwargs):
+    """
+    Create a histogram for the numerical data in values.
+    Returns the Plot object for the histogram.
+    """
     label = "Values"
-    table = Table().with_columns(label, samples)
-
-    if p_cutoff != None:
-        left_end = percentile(100 - p_cutoff, samples)
-    else:    
-        left_end = None
+    table = Table().with_columns(label, values)
     
-    plot = table.hist(label, left_end = left_end, bins=bins)
+    plot = table.hist(label, **kwargs)
     return plot
 
+@doc_tag(path='inference-library-ref.html')
 def simulate_sample_statistic(make_sample, sample_size,
-                              compute_sample_statistic, num_samples):
+                              compute_sample_statistic, num_trials):
+    """
+    Simulates `num_trials` sampling steps and returns an array of the
+    statistic for those samples.  The parameters are:
+
+    * make_sample: a function that takes an integer n and returns a 
+                   sample as an array of n elements.
     
+    * sample_size: the size of the samples to use in the simulation.
+    
+    * compute_statistic: a function that takes a sample as 
+                         an array and returns the statistic for that sample. 
+    
+    * num_trials: the number of simulation steps to perform.
+    """
+
     simulated_statistics = make_array()
-    for i in np.arange(0, num_samples):
+    for i in np.arange(0, num_trials):
         simulated_sample = make_sample(sample_size)
         sample_statistic = compute_sample_statistic(simulated_sample)
         simulated_statistics = np.append(simulated_statistics, sample_statistic)
     return simulated_statistics
 
-def pvalue_for_observed(simulated_statistics, observed_statistic): 
+@doc_tag(path='inference-library-ref.html')
+def empirical_pvalue(null_statistics, observed_statistic): 
     """
-    Return the proportion of the simulated statistics that are greater than 
-    or equal to the observed statistic
+    Return the proportion of the null statistics that are greater than 
+    or equal to the observed statistic.
     """
-    return np.count_nonzero(simulated_statistics >= observed_statistic) / len(simulated_statistics)
+    return np.count_nonzero(null_statistics >= observed_statistic) / len(null_statistics)
 
 
 ###        
         
 # def total_variation_distance(distribution1, distribution2):
 #     return sum(np.abs(distribution1 - distribution2)) / 2
-
+@doc_tag(path='inference-library-ref.html')
 def permutation_sample(table, group_column_label):
     """
     Returns: The table with a new "Shuffled Label" column containing
@@ -106,6 +100,7 @@ def permutation_sample(table, group_column_label):
 # Bootstrapping: generic code that can be resued 
 ######################################################################
 
+@doc_tag(path='inference-library-ref.html')
 def confidence_interval(ci_percent, bootstrap_statistics):
     """
     Return an array with the lower and upper bound of the ci_percent confidence interval.
@@ -116,35 +111,36 @@ def confidence_interval(ci_percent, bootstrap_statistics):
     right = percentile(100 - percent_in_each_tail, bootstrap_statistics)
     return make_array(left, right)
 
-def bootstrap(observed_sample, compute_statistic, num_trials): 
+@doc_tag(path='inference-library-ref.html')
+def bootstrap(initial_sample, compute_statistic, num_trials): 
+    """
+    Creates num_trials resamples of the initial sample.
+    Returns an array of the provided statistic for those samples.
 
+    * initial_sample: the initial sample, as an array.
+    
+    * compute_statistic: a function that takes a sample as 
+                         an array and returns the statistic for that sample. 
+    
+    * num_trials: the number of bootstrap samples to create.
+
+    """
     statistics = make_array()
     
     for i in np.arange(0, num_trials): 
         #Key: in bootstrapping we must always sample with replacement 
-        simulated_resample = observed_sample.sample()
+        simulated_resample = initial_sample.sample()
         
         resample_statistic = compute_statistic(simulated_resample)
         statistics = np.append(statistics, resample_statistic)
     
     return statistics
 
-# def plot_confidence_interval(ci_percent, 
-#                             statistics, 
-#                             observed_statistic = None, 
-#                             model_parameter = None):
-#     table = Table().with_column('Statistics', statistics)
-#     plot = table.hist('Statistics')
-
-#     left_right = confidence_interval(ci_percent, statistics)
-#     plot.interval(left_right)
-
-#     return plot    
-
 ######################################################################
 # Linear regression: generic code that can be resued 
 ######################################################################
 
+@doc_tag(path='inference-library-ref.html')
 def pearson_correlation(table, x_label, y_label):
     """
     Return the correlation coefficient capturing the sign
@@ -159,6 +155,7 @@ def pearson_correlation(table, x_label, y_label):
     denominator = np.sqrt(sum((x - x_mean)**2)) * np.sqrt(sum((y - y_mean)**2))
     return numerator / denominator 
     
+@doc_tag(path='inference-library-ref.html')
 def line_predictions(a, b, x): 
     """
     Computes the prediction  y_hat = a * x + b
@@ -166,6 +163,7 @@ def line_predictions(a, b, x):
     """
     return a * x + b
 
+@doc_tag(path='inference-library-ref.html')
 def mean_squared_error(table, x_label, y_label, a, b): 
     """
     Returns the mean squared error for the line described by slope a and
@@ -176,6 +174,7 @@ def mean_squared_error(table, x_label, y_label, a, b):
     residual = table.column(y_label) - y_hat
     return np.mean(residual**2)
 
+@doc_tag(path='inference-library-ref.html')
 def linear_regression(table, x_label, y_label):
     """
     Return an array containing the slope and intercept of the line best fitting 
@@ -200,6 +199,7 @@ def linear_regression(table, x_label, y_label):
     # to find the optimal a and b for our mean squared error function 
     return minimize(mse_for_a_b)
 
+@doc_tag(path='inference-library-ref.html')
 def residuals(table, x_label, y_label, a, b): 
     """
     Residuals = y - y_hat 
@@ -212,6 +212,7 @@ def residuals(table, x_label, y_label, a, b):
     residual = y - y_hat
     return residual
 
+@doc_tag(path='inference-library-ref.html')
 def r2_score(table, x_label, y_label, a, b):
     """
     R-squared score (also called the "coefficient of determination")
@@ -228,6 +229,7 @@ def r2_score(table, x_label, y_label, a, b):
 # Plotting: this code can be reused to plot aspects of linear regression
 ######################################################################
 
+@doc_tag(path='inference-library-ref.html')
 def plot_scatter_with_line(table, x_label, y_label, a, b):
     """
     Draw a scatter plot of the given table data overlaid with
@@ -239,6 +241,7 @@ def plot_scatter_with_line(table, x_label, y_label, a, b):
     
 
 
+@doc_tag(path='inference-library-ref.html')
 def plot_residuals(table, x_label, y_label, a, b):
     """
     Plots x-axis as the original x values 

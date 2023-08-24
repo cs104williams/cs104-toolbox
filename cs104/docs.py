@@ -20,7 +20,13 @@ import datascience
 
 # The URL of the docs page -- use the indirect on github to avoid
 # being dependent on where the local pages are installed...
-_root = "https://cs104williams.github.io/assets/python-library-ref.html"
+
+# The url except for the last bit
+_root = 'https://cs104williams.github.io/assets/'
+
+# The main doc page -- this is separate so we can override it with tags
+#  for special pages like the inference page.
+_path = "python-library-ref.html"
 
 # All of the library functions we want to link to the docs.
 libs_to_wrap = [
@@ -99,11 +105,16 @@ libs_to_wrap = [
 ]
 
 
-def url(tag):
-    """Build a URL out of the root and a function's tag"""
-    return _root + "#" + tag
+def url(path=None, tag=None):
+    """Build a URL out of the root, the path, and a function's tag"""
+    if path == None:
+        path = _path
+    if tag != None:
+        return _root + path + "#" + tag
+    else:
+        return _root + path
 
-def doc_tag(tag=None):
+def doc_tag(tag=None, path=None):
     """
     A function decorator that ties a function to the given tag
     on the documentation page.
@@ -112,9 +123,9 @@ def doc_tag(tag=None):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
             if tag is None:
-                __doc_url__ = url(func.__name__)
+                __doc_url__ = url(path=path, tag=func.__name__)
             else:
-                __doc_url__ = url(tag)
+                __doc_url__ = url(path=path, tag=tag)
             result = func(*args, **kwargs)
             return result
         return wrapper
@@ -123,7 +134,7 @@ def doc_tag(tag=None):
 def _wrapper(tag, fn_name, func): 
     """The basic wrapper for a library function"""
     def call(*args, **kwargs):
-        __doc_url__ = url(tag)  # special name picked up in cs104.exceptions.
+        __doc_url__ = url(tag=tag)  # special name picked up in cs104.exceptions.
         return func(*args, **kwargs)
     
     wrapper = call
@@ -135,7 +146,7 @@ def _wrapper_static(tag, fn_name, module, func):
     """The wrapper for a static library function"""
     @classmethod
     def call(*args, **kwargs):
-        __doc_url__ = url(tag)   # special name picked up in cs104.exceptions.
+        __doc_url__ = url(tag=tag)   # special name picked up in cs104.exceptions.
         return func.__get__(args[0],module)(*args[1:], **kwargs)
     
     wrapper = call
