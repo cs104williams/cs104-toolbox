@@ -19,28 +19,30 @@ from .docs import doc_tag
 
 ###
 
-# This is not general enough to handle all of the cases we see early on,
-# so let's wait until the sample statistics to introduce a simulation function
-# (Though this may make a nice example for lecture/lab/midterm...)
-#
-# def simulate(compute_outcome, num_outcomes):
-#     outcomes = make_array()
-#     for i in np.arange(0, num_outcomes):
-#         outcome = compute_outcome()
-#         outcomes = np.append(outcomes, outcome)
-#     return outcomes
-
 @doc_tag(path='inference-library-ref.html')
-def array_hist(values, **kwargs):
+def simulate(make_one_outcome, num_trials):
     """
-    Create a histogram for the numerical data in values.
-    Returns the Plot object for the histogram.
+    Return an array of num_trials values, each 
+    of which was created by calling make_one_outcome().
     """
-    label = "Values"
-    table = Table().with_columns(label, values)
+    outcomes = make_array()
+    for i in np.arange(0, num_trials):
+        outcome = make_one_outcome()
+        outcomes = np.append(outcomes, outcome)
+
+    return outcomes
+
+# @doc_tag(path='inference-library-ref.html')
+# def array_hist(values, **kwargs):
+#     """
+#     Create a histogram for the numerical data in values.
+#     Returns the Plot object for the histogram.
+#     """
+#     label = "Values"
+#     table = Table().with_columns(label, values)
     
-    plot = table.hist(label, **kwargs)
-    return plot
+#     plot = table.hist(label, **kwargs)
+#     return plot
 
 @doc_tag(path='inference-library-ref.html')
 def simulate_sample_statistic(make_sample, sample_size,
