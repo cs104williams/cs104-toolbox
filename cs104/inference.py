@@ -45,14 +45,14 @@ def simulate(make_one_outcome, num_trials):
 #     return plot
 
 @doc_tag(path='inference-library-ref.html')
-def simulate_sample_statistic(make_sample, sample_size,
+def simulate_sample_statistic(make_one_sample, sample_size,
                               compute_sample_statistic, num_trials):
     """
     Simulates `num_trials` sampling steps and returns an array of the
     statistic for those samples.  The parameters are:
 
-    * make_sample: a function that takes an integer n and returns a 
-                   sample as an array of n elements.
+    * make_one_sample: a function that takes an integer n and returns a 
+                       sample as an array of n elements.
     
     * sample_size: the size of the samples to use in the simulation.
     
@@ -64,7 +64,7 @@ def simulate_sample_statistic(make_sample, sample_size,
 
     simulated_statistics = make_array()
     for i in np.arange(0, num_trials):
-        simulated_sample = make_sample(sample_size)
+        simulated_sample = make_one_sample(sample_size)
         sample_statistic = compute_sample_statistic(simulated_sample)
         simulated_statistics = np.append(simulated_statistics, sample_statistic)
     return simulated_statistics
