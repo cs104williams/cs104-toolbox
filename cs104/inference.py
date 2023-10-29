@@ -97,7 +97,7 @@ def permutation_sample(table, group_label):
     return shuffled_table
 
 
-def difference_of_proportions(table, group_label, value_label):
+def abs_difference_of_proportions(table, group_label, value_label):
     """
     Takes a table, the label of the column used to divide rows into
     two groups, and the label of the column storing the values
@@ -134,7 +134,7 @@ def simulate_permutation_statistic(table, group_label, value_label,
     sample_statistics = make_array()
     for i in np.arange(num_trials):
         one_sample = permutation_sample(table, group_label)
-        sample_statistic = difference_of_proportions(one_sample, "Shuffled Label", value_label)
+        sample_statistic = abs_difference_of_proportions(one_sample, "Shuffled Label", value_label)
         sample_statistics = np.append(sample_statistics, sample_statistic)
     return sample_statistics
 
