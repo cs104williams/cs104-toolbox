@@ -10,6 +10,7 @@ disable this feature.
 
 __all__ = []
 
+import sys
 import uuid
 import traceback
 from IPython.core.display import display, HTML
@@ -46,15 +47,16 @@ def shorten_stack(shell, etype, evalue, tb, tb_offset=None):
     intermediate frames from libraries, insert doc link, and wrap up all that
     in an HTML formatted error message.
     """
+    itb = shell.InteractiveTB
     id = uuid.uuid1().hex
     
     # Take the full stack trace and convert into HTML.  
     conv = Ansi2HTMLConverter()
-    itb = shell.InteractiveTB
     ansi = "".join(itb.stb2text(itb.structured_traceback(etype, evalue, tb, tb_offset)))
     full = conv.convert(ansi, full=False)
     full = html_prefix + full
-    
+
+    # if we biff anywhere, default to just showing the original message.
     frames = traceback.extract_tb(tb)
     
     # The files for each frame in the traceback:
@@ -66,13 +68,13 @@ def shorten_stack(shell, etype, evalue, tb, tb_offset=None):
     #  ignore all the frames above that, since the code is not meaningful
     #  to us.
     notebook_filename = files[1]
-    last_notebook_filename = len(files) - 1
-    while last_notebook_filename > 0 and not is_user_file(files[last_notebook_filename]):
-        last_notebook_filename -= 1
-        
+    last_tb_from_notebook_index = len(files) - 1
+    while last_tb_from_notebook_index > 0 and not is_user_file(files[last_tb_from_notebook_index]):
+        last_tb_from_notebook_index -= 1
+    
     # Go the the last notebook frame and drop the rest
     tail = tb
-    for i in range(last_notebook_filename):
+    for i in range(last_tb_from_notebook_index):
         tail = tail.tb_next
     callee = tail.tb_next
     tail.tb_next = None
@@ -119,11 +121,32 @@ def shorten_stack(shell, etype, evalue, tb, tb_offset=None):
                 id="{id}">{full}</pre>
             """)
         display(HTML(text))
-  
+    
+   
+def safe_shorten_stack(shell, etype, evalue, tb, tb_offset=None): 
+    """
+    A wrapper that catches all exceptions created while processing
+    an exception and punts back to the shell's default behavior.
+    
+    This ensures that, even if the shorten_stack code doesn't 
+    handle every case properly, some error related to the user's
+    program will be shown.  (Rather than the custom TB handler failure
+    message reported if we don't catch exceptions here.)
+
+    It's possible we end up changing tb before an exception gets
+    raised in shorten_stack -- so shorten_stack should never leave
+    tb in a state that can't be printed...
+    """
+    try:
+        shorten_stack(shell, etype, evalue, tb, tb_offset)
+    except Exception:
+        shell.showtraceback((etype, evalue, tb), tb_offset=0)
+
+
 # this registers a custom exception handler for the whole current notebook
 try:
     ipy = get_ipython()
     if ipy != None:
-        ipy.set_custom_exc((Exception,), shorten_stack)
+        ipy.set_custom_exc((Exception,), safe_shorten_stack)
 except NameError:
     pass
