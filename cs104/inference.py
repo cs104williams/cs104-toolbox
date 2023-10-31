@@ -97,20 +97,22 @@ def permutation_sample(table, group_label):
     return shuffled_table
 
 
-def abs_difference_of_proportions(table, group_label, value_label):
+def abs_difference_of_means(table, group_label, value_label):
     """
     Takes a table, the label of the column used to divide rows into
     two groups, and the label of the column storing the values
-    for each row (typically 0 or 1, or True or False)
-    Returns: Difference of proportions of 1's in the two groups"""
+    for each row.
+    Returns the absolute difference of the mean 
+    values for the two groups.
+    """
     
     # table containing group means
-    proportions_table = table.group(group_label, np.mean)
+    means_table = table.group(group_label, np.mean)
     
     # array of group means
-    proportions = proportions_table.column(value_label + ' mean')
+    means = means_table.column(value_label + ' mean')
     
-    return abs(proportions.item(1) - proportions.item(0))
+    return abs(means.item(1) - means.item(0))
 
 
 
@@ -119,22 +121,27 @@ def simulate_permutation_statistic(table, group_label, value_label,
                                    num_trials):
     """
     Simulates `num_trials` sampling steps and returns an array of the
-    statistic for those samples.  The parameters are:
+    `abs_difference_of_means` statistic for those samples.  
+
+    The parameters are:
 
     * table:       the Table to which we'll apply a permutation test.
     
     * group_label: the label of a column used to divide the rows into two groups.
     
     * value_label: the label of the column storing the values
-                   for each row (typically 0 or 1, or True or False)
+                   for each row.  This column should contain numerical
+                   values.  The values are restricted to 0 and 1, we can
+                   interpret the sample statistic as being the absolute 
+                   difference in the proportion of 1's in the two groups.
     
-    * num_trials: the number of permutations to compute.
+    * num_trials:  the number of permutations to compute.
     """
 
     sample_statistics = make_array()
     for i in np.arange(num_trials):
         one_sample = permutation_sample(table, group_label)
-        sample_statistic = abs_difference_of_proportions(one_sample, "Shuffled Label", value_label)
+        sample_statistic = abs_difference_of_means(one_sample, "Shuffled Label", value_label)
         sample_statistics = np.append(sample_statistics, sample_statistic)
     return sample_statistics
 
