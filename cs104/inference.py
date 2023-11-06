@@ -187,7 +187,9 @@ def bootstrap_statistic(observed_sample, compute_statistic, num_trials):
 
     """
 
-    # TODO: check that observed_sample is an array!
+    # Check that observed_sample is an array!
+    if not isinstance(observed_sample, np.ndarray):
+        raise ValueError('The first parameter to bootstrap_statistic must be a sample represented as an array, not a value of type ' + str(type(observed_sample).__name__))
 
     statistics = make_array()
     
