@@ -103,7 +103,7 @@ def abs_difference_of_means(table, group_label, value_label):
     two groups, and the label of the column storing the values
     for each row.
     Returns the absolute difference of the mean 
-    values for the two groups.
+    value for the two groups.
     """
     
     # table containing group means
@@ -112,7 +112,7 @@ def abs_difference_of_means(table, group_label, value_label):
     # array of group means
     means = means_table.column(value_label + ' mean')
     
-    return abs(means.item(1) - means.item(0))
+    return abs(means.item(0) - means.item(1))
 
 
 
