@@ -234,7 +234,7 @@ def check_str(a, local_ns=None):
     except SyntaxError as e:
         message = [ f"SyntaxError: {e.args[0]}", f"{e.text}", f"{' '*(e.offset-1)}^" ]
     except Exception as e:
-        message = [ str(e) ]
+        message = [ str(type(e).__name__) + ": " + str(e) ]
         
     if message != [ ]:
         print_message(f'check({a})', message)
@@ -291,7 +291,7 @@ class approx:
         return f'approx({self.a})'
 
     def __eq__(self, v):
-        return np.isclose(v,self.a,atol=self.plus_or_minus)
+        return v != None and np.isclose(v,self.a,atol=self.plus_or_minus)
 
 
 
@@ -321,7 +321,7 @@ class between:
         return f'between({self.lo}, {self.hi})'
 
     def __contains__(self, v):
-        return self.lo <= v < self.hi
+        return v != None and self.lo <= v < self.hi
 
 class between_or_equal:
     """
@@ -349,4 +349,4 @@ class between_or_equal:
         return f'[{self.lo},{self.hi}]'
 
     def __contains__(self, v):
-        return self.lo <= v <= self.hi
+        return v != None and self.lo <= v <= self.hi
