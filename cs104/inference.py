@@ -87,7 +87,7 @@ def permutation_sample(table, group_label):
     Returns a copy of the table with a new "Shuffled Label" column
     containing the shuffled values from the group column.
     """
-    
+
     # array of shuffled labels
     shuffled_labels = table.sample(with_replacement=False).column(group_label)
     
@@ -105,6 +105,16 @@ def abs_difference_of_means(table, group_label, value_label):
     Returns the absolute difference of the mean 
     value for the two groups.
     """
+
+    # Check taht value_label exists so we don't get an error
+    # about the mean column not existing later on...
+    # This is the check from table.column -- it is ugly.  Refactor
+    # at some point...
+    if value_label not in table.labels:
+        raise ValueError(
+            'The column "{}" is not in the table. The table contains '
+            'these columns: {}'
+            .format(value_label, ', '.join(table.labels)))
     
     # table containing group means
     means_table = table.group(group_label, np.mean)
@@ -151,35 +161,41 @@ def simulate_permutation_statistic(table, group_label, value_label,
 ######################################################################
 
 @doc_tag(path='inference-library-ref.html')
-def confidence_interval(ci_percent, bootstrap_statistics):
+def confidence_interval(ci_percent, statistics):
     """
     Return an array with the lower and upper bound of the ci_percent confidence interval.
     """
     # percent in each of the the left/right tails
     percent_in_each_tail = (100 - ci_percent) / 2   
-    left = percentile(percent_in_each_tail, bootstrap_statistics)
-    right = percentile(100 - percent_in_each_tail, bootstrap_statistics)
+    left = percentile(percent_in_each_tail, statistics)
+    right = percentile(100 - percent_in_each_tail, statistics)
     return make_array(left, right)
 
 @doc_tag(path='inference-library-ref.html')
-def bootstrap(initial_sample, compute_statistic, num_trials): 
+def bootstrap_statistic(observed_sample, compute_statistic, num_trials): 
     """
     Creates num_trials resamples of the initial sample.
     Returns an array of the provided statistic for those samples.
 
-    * initial_sample: the initial sample, as an array.
+    * observed_sample: the initial sample, as an array.
     
     * compute_statistic: a function that takes a sample as 
-                         an array and returns the statistic for that sample. 
+                         an array and returns the statistic for that
+                         sample. 
     
     * num_trials: the number of bootstrap samples to create.
 
     """
+
+    # Check that observed_sample is an array!
+    if not isinstance(observed_sample, np.ndarray):
+        raise ValueError('The first parameter to bootstrap_statistic must be a sample represented as an array, not a value of type ' + str(type(observed_sample).__name__))
+
     statistics = make_array()
     
     for i in np.arange(0, num_trials): 
         #Key: in bootstrapping we must always sample with replacement 
-        simulated_resample = initial_sample.sample()
+        simulated_resample = np.random.choice(observed_sample, len(observed_sample))
         
         resample_statistic = compute_statistic(simulated_resample)
         statistics = np.append(statistics, resample_statistic)
