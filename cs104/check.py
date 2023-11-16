@@ -137,7 +137,7 @@ def eval_check(line, local_ns=None):
         """
         result = eval(compile(text_for(x), '', 'eval'), globals(), local_ns)
 
-        # special error if one of the variables is ..., and not be design
+        # special error if one of the variables is ..., and not by design
         if text_for(x) != '...' and (result is ... or result is type(...)):
             raise ValueError(f"{text_for(x)} should not be ...")
         

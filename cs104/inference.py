@@ -302,7 +302,11 @@ def plot_scatter_with_line(table, x_label, y_label, a, b):
     a line having the given slope a and intercept b.
     """
     plot = table.scatter(x_label, y_label, title='a = ' + str(round(a,3)) + '; b = ' + str(round(b,3)))
-    plot.line(slope=a, intercept=b, lw=2, color="C0")
+
+    x = table.column(x_label)
+    xlims = make_array(min(x), max(x))
+    plot.line(xlims, a * xlims + b, lw=2, color="C0")
+    
     return plot
     
 
