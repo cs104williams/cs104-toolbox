@@ -324,14 +324,14 @@ def plot_residuals(table, x_label, y_label, a, b):
     largest_residual = abs(max(residual))
     residual_table = Table().with_columns(x_label, x, 'residuals', residual)
     plot = residual_table.scatter(x_label, 'residuals',
-                                  color='red', 
+                                  color='C3', alpha=0.7,
                                   title='Residual Plot',
                                   ylim=1.05 * make_array(-largest_residual, largest_residual))
-    plot.line(y = 0, color='darkblue', lw=2)
+    plot.line(y = 0, color='darkblue', lw=2, zorder=0.9)
     return plot
     
-
-def plot_full_regression(table, x_label, y_label, a, b):
+@doc_tag(path='inference-library-ref.html')
+def plot_regression_and_residuals(table, x_label, y_label, a, b):
     """
     Left plot: a scatter plot and line for the provided table and slope/intercept
     Right plot: The residuals of the predictions.
