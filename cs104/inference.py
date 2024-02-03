@@ -57,7 +57,8 @@ def simulate_sample_statistic(make_one_sample, sample_size,
     * sample_size: the size of the samples to use in the simulation.
     
     * compute_statistic: a function that takes a sample as 
-                         an array and returns the statistic for that sample. 
+                         an array and returns the statistic for that sample.
+                         The return value should be a single numerical value.
     
     * num_trials: the number of simulation steps to perform.
     """
@@ -335,11 +336,13 @@ def plot_regression_and_residuals(table, x_label, y_label, a, b):
     """
     Left plot: a scatter plot and line for the provided table and slope/intercept
     Right plot: The residuals of the predictions.
+    Returns the Plot object for the scatter plot.
     """
     
     with Figure(1,2):
-        plot_scatter_with_line(table, x_label, y_label, a, b)
+        scatter = plot_scatter_with_line(table, x_label, y_label, a, b)
         plot_residuals(table, x_label, y_label, a, b)
+        return scatter
     
 
 ######################################################################
@@ -353,6 +356,7 @@ def plot_regression_line_and_mse_heat(table, x_label, y_label, a, b, show_mse=No
     """
     Left plot: the scatter plot with line y=ax+b
     Right plot: None, 2D heat map of MSE, or 3D surface plot of MSE 
+    Returns the Plot object for the scatter plot
     """
     if a_space is None: a_space = np.linspace(-10*a, 10*a, 200)
     if b_space is None: b_space = np.linspace(-10*b, 10*b, 200)
@@ -368,7 +372,7 @@ def plot_regression_line_and_mse_heat(table, x_label, y_label, a, b, show_mse=No
 
     #Plot the scatter plot and best fit line on the left
     with Plot(ax[0]):
-        plot_scatter_with_line(table, x_label, y_label, a, b)
+        scatter = plot_scatter_with_line(table, x_label, y_label, a, b)
 
     if show_mse == '2d':
         with Plot(ax[1]):
@@ -396,4 +400,5 @@ def plot_regression_line_and_mse_heat(table, x_label, y_label, a, b, show_mse=No
             ax[1].set_ylabel('b')
             ax[1].set_title('Mean Squared Error')
     
+    return scatter
     
