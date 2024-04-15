@@ -17,6 +17,7 @@ import ipywidgets
 import numpy as np
 import uuid
 import itertools
+import matplotlib.pyplot as plt
 
 
 from .docs import doc_tag
@@ -157,6 +158,16 @@ class Slider(Control):
         else:
             params = f'min="{self._v[0]}" max="{self._v[1]}" step="{self._v[2]}"'
                 
+        return f"""\
+            <div class="lm-Widget jupyter-widgets widget-inline-hbox widget-slider widget-hslider">
+                <label class="widget-label" title="null" style="">{name}</label>
+                <div class="slider-container">
+                    <input type="range" class="ui-slider ui-corner-all ui-widget ui-widget-content slider ui-slider-horizontal"  id="slider_{uid}" {params}>
+                </div>
+                <div class="widget-readout" contenteditable="true" style="" id="sliderValue_{uid}">7</div>
+            </div>
+        """
+
         return textwrap.dedent(f"""\
         <div class="lm-Widget jupyter-widgets widget-inline-hbox widget-slider widget-hslider"><label class="widget-label"
                 title="null" style="">{name}</label>
@@ -254,7 +265,6 @@ def create_csv_line(values):
     return ','.join(escape_and_quote(value) for value in values)
 
 def _permutations(f, kwargs):
-    import matplotlib.pyplot as plt
 
     def htmlify(v):
         if hasattr(v, "_repr_html_"):
@@ -353,6 +363,27 @@ def html_interact(f, **kwargs):
     """)
 
     return textwrap.dedent(f"""\
+        <style>
+        .lm-Widget.jupyter-widgets.widget-inline-hbox {{
+            display: flex; /* Aligns children (label, slider, readout) in a row */
+            align-items: center; /* Centers the items vertically */
+        }}
+
+        .widget-label {{
+            width: 120px;
+            overflow: hidden; /* Prevents the text from spilling out */
+            text-overflow: ellipsis; /* Adds ellipses if the text overflows */
+            white-space: nowrap; /* Keeps the text on a single line */
+        }}
+
+        .widget-readout {{
+            width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }}
+        </style>
+
         {full_html}
         <script>
         {full_scripts}
