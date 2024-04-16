@@ -8,8 +8,16 @@ to Control objects, each of which describes how the user may adjust
 each parameter to the given function.
 """
 
-__all__ = [ 'interact', 'Fixed', 'CheckBox', 'Slider', 'Choice', 'record', 'html_interact' ] 
-           
+__all__ = [
+    "interact",
+    "Fixed",
+    "CheckBox",
+    "Slider",
+    "Choice",
+    "record",
+    "html_interact",
+]
+
 import json
 import textwrap
 from IPython.display import display
@@ -24,23 +32,26 @@ from .docs import doc_tag
 import inspect
 
 counter = 0
+
+
 def uuid():
     global counter
     counter += 1
     return f"i_{counter}"
 
-class Control: 
+
+class Control:
     def __init__(self):
         self._uid = uuid()
 
     def __str__(self):
         return str(self._v)
-    
+
     def _html(self, name):
-        return ''
+        return ""
 
     def _script(self, name):
-        return ''
+        return ""
 
     def _input_var(self, name):
         return None
@@ -49,19 +60,21 @@ class Control:
         return None
 
     def _values(self):
-        return None    
+        return None
+
 
 class Fixed(Control):
     """
     A paramater with a fixed value.
     """
+
     def __init__(self, value=None):
         super().__init__()
         self._value = value
         self._v = ipywidgets.interaction.fixed(value)
 
     def _html(self, name):
-        return ''
+        return ""
 
     def _script(self):
         return f"""function {self._uid}_value() {{ return {self._value}; }}"""
@@ -70,14 +83,15 @@ class Fixed(Control):
         return None
 
     def _values(self):
-        return [ self._value ]
-    
+        return [self._value]
+
 
 class CheckBox(Control):
     """
     An adjustable boolean parameter.  This parameter is
     displayed as a check box.
     """
+
     def __init__(self, initial=True):
         """
         initial is the beginning value for the parameter.
@@ -104,12 +118,13 @@ class CheckBox(Control):
                 var _checkbox_{uid} = document.getElementById('checkbox_{uid}');
                 function {uid}_value() {{ return _checkbox_{uid}.checked; }}
                 """
-    
+
     def _input_var(self):
         return f"_checkbox_{self._uid}"
 
     def _values(self):
-        return [ True, False ]
+        return [True, False]
+
 
 # class Text(Control):
 #     """
@@ -127,13 +142,14 @@ class CheckBox(Control):
 #     def _html(self, name):
 #         raise ValueError("Cannot make a web interaction with text fields.")
 
-        
+
 class Slider(Control):
     """
-    An adjustable numerical parameter.  This parameter is 
+    An adjustable numerical parameter.  This parameter is
     displayed as a slider.
     """
-    @doc_tag('interact')
+
+    @doc_tag("interact")
     def __init__(self, *args):
         """
         The initializer takes two or three parameters.  The first two
@@ -141,14 +157,14 @@ class Slider(Control):
         the step size.
 
         Alternatively, pass in an array of two or three values with the
-        same meaning as above. 
+        same meaning as above.
         """
         super().__init__()
-        if np.shape(args) == (1,2) or np.shape(args) == (1,3):
+        if np.shape(args) == (1, 2) or np.shape(args) == (1, 3):
             args = args[0]
         if np.shape(args) != (2,) and np.shape(args) != (3,):
             raise ValueError(f"{args} is not a valid range for a Slider.")
-        
+
         self._v = args
 
     def _html(self, name):
@@ -157,18 +173,19 @@ class Slider(Control):
             params = f'min="{self._v[0]}" max="{self._v[1]}"'
         else:
             params = f'min="{self._v[0]}" max="{self._v[1]}" step="{self._v[2]}"'
-                
+
         return f"""\
             <div class="lm-Widget jupyter-widgets widget-inline-hbox widget-slider widget-hslider">
                 <label class="widget-label" title="null" style="">{name}</label>
                 <div class="slider-container">
                     <input type="range" class="ui-slider ui-corner-all ui-widget ui-widget-content slider ui-slider-horizontal"  id="slider_{uid}" {params}>
                 </div>
-                <div class="widget-readout" contenteditable="true" style="" id="sliderValue_{uid}">7</div>
+                <div class="widget-readout" style="" id="sliderValue_{uid}">7</div>
             </div>
         """
 
-        return textwrap.dedent(f"""\
+        return textwrap.dedent(
+            f"""\
         <div class="lm-Widget jupyter-widgets widget-inline-hbox widget-slider widget-hslider"><label class="widget-label"
                 title="null" style="">{name}</label>
             <div class="slider-container">
@@ -177,8 +194,9 @@ class Slider(Control):
                 </div>
             </div>
             <div class="widget-readout" contenteditable="true" style="" id="sliderValue_{uid}">7</div>
-        </div>""")
-        
+        </div>"""
+        )
+
     def _script(self):
         uid = self._uid
         return f"""\
@@ -192,22 +210,26 @@ class Slider(Control):
                 _sliderValue_{uid}.textContent = this.value;
             }})
         """
-                               
+
     def _input_var(self):
         return f"_slider_{self._uid}"
 
     def _values(self):
-        start, stop, step = self._v[0], self._v[1], (self._v[2] if len(self._v) == 3 else 1)
+        start, stop, step = (
+            self._v[0],
+            self._v[1],
+            (self._v[2] if len(self._v) == 3 else 1),
+        )
         return np.arange(start, stop + step, step)
 
 
 class Choice(Control):
     """
-    A parameter with discrete (non-numeric) values.  This parameter is 
+    A parameter with discrete (non-numeric) values.  This parameter is
     displayed as a popup menu.
     """
 
-    @doc_tag('interact')
+    @doc_tag("interact")
     def __init__(self, *args):
         """
         The initializer takes any number of values to use in the menu,
@@ -217,29 +239,30 @@ class Choice(Control):
         if len(args) == 1 and np.shape(args[0]) != ():
             args = args[0]
         self._v = list(args)
-    
 
     def _html(self, name):
         uid = self._uid
-        options = "".join([  
-            f'<option data-value="{v}" value="{v}">{v}</option>' for v in self._v 
-        ])
-        return textwrap.dedent(f"""\
+        options = "".join(
+            [f'<option data-value="{v}" value="{v}">{v}</option>' for v in self._v]
+        )
+        return textwrap.dedent(
+            f"""\
             <div class="lm-Widget jupyter-widgets widget-inline-hbox widget-dropdown">
                 <label class="widget-label" for="choice_{uid}" style="">{name}</label>
                     <select id="choice_{uid}">
                         {options}
                     </select>
             </div>
-            """)
-                               
+            """
+        )
+
     def _script(self):
         uid = self._uid
         return f"""
                 var _choice_{uid} = document.getElementById('choice_{uid}');
                 function {uid}_value() {{ return _choice_{uid}.value; }}
                 """
-    
+
     def _input_var(self):
         return f"_choice_{self._uid}"
 
@@ -257,12 +280,13 @@ def create_csv_line(values):
         # Escape double quotes by doubling them
         str_value = str_value.replace('"', '""')
         # Enclose in double quotes if the value contains a comma, newline, or double quote
-        if ',' in str_value or '\n' in str_value or '"' in str_value:
+        if "," in str_value or "\n" in str_value or '"' in str_value:
             str_value = f'"{str_value}"'
         return str_value
 
     # Apply the escape and quote function to each value and join with commas
-    return ','.join(escape_and_quote(value) for value in values)
+    return ",".join(escape_and_quote(value) for value in values)
+
 
 def _permutations(f, kwargs):
 
@@ -272,47 +296,60 @@ def _permutations(f, kwargs):
         else:
             return f"<pre>{v}</pre>"
 
-    lists = [ [ (param,v) for v in control._values() ] for param, control in kwargs.items() ]
+    lists = [
+        [(param, v) for v in control._values()] for param, control in kwargs.items()
+    ]
 
     plt.ioff()
     res = list(itertools.product(*lists))
-    precomputed = [ (create_csv_line((list(zip(*params))[1])), htmlify(f(**dict(params)))) for params in res ]
+    precomputed = [
+        (create_csv_line((list(zip(*params))[1])), htmlify(f(**dict(params))))
+        for params in res
+    ]
     plt.ion()
-    
-    return json.dumps(dict(precomputed), indent=2)
 
+    return json.dumps(dict(precomputed), indent=2)
 
 
 def check_parameters(f, kwargs):
     parameter_names = inspect.signature(f).parameters.keys()
-    
-    missing = [p for p in parameter_names if p not in kwargs] 
+
+    missing = [p for p in parameter_names if p not in kwargs]
     if missing != []:
-        raise ValueError(f"Missing arguments to interact: {', '.join(missing)}.  You must provide an argument for each parameter of {f.__name__}.")
+        raise ValueError(
+            f"Missing arguments to interact: {', '.join(missing)}.  You must provide an argument for each parameter of {f.__name__}."
+        )
 
     for param, value in kwargs.items():
         if not issubclass(type(value), Control):
-            raise ValueError(f"Parameter for {param} is not a control -- did you mean {param}=Fixed(...)?")
+            raise ValueError(
+                f"Parameter for {param} is not a control -- did you mean {param}=Fixed(...)?"
+            )
 
 
 def make_widgets(f, kwargs):
-    check_parameters(f, kwargs)    
+    check_parameters(f, kwargs)
     widgets = dict()
-    
+
     for param, value in kwargs.items():
         widgets[param] = value._v
-    
+
     return widgets
+
 
 def html_interact(f, **kwargs):
     uid = uuid()
-    check_parameters(f, kwargs)    
+    check_parameters(f, kwargs)
 
-    htmls,scripts,inputs = zip(*[ (value._html(param), 
-                             value._script(), 
-                             value._input_var()) for (param, value) in kwargs.items() ])
-    
-    full_html = textwrap.dedent(f"""\
+    htmls, scripts, inputs = zip(
+        *[
+            (value._html(param), value._script(), value._input_var())
+            for (param, value) in kwargs.items()
+        ]
+    )
+
+    full_html = textwrap.dedent(
+        f"""\
         <div class="lm-Widget lm-Panel jp-OutputArea-child">
             <div class="lm-Widget lm-Panel jp-OutputArea-output">
                 <div class="lm-Widget lm-Panel jupyter-widgets widget-container widget-box widget-vbox widget-interact">
@@ -330,14 +367,20 @@ def html_interact(f, **kwargs):
             </div>
         </div>
 
-        """)
+        """
+    )
     full_scripts = "\n".join(scripts)
 
-    listeners = "\n".join([ 
-        f"{name}.oninput = function() {{ update_{uid}(); }}" for name in inputs if name 
-    ])
+    listeners = "\n".join(
+        [
+            f"{name}.oninput = function() {{ update_{uid}(); }}"
+            for name in inputs
+            if name
+        ]
+    )
 
-    updater = textwrap.dedent(f"""\
+    updater = textwrap.dedent(
+        f"""\
         function createCSVLine(values) {{
             return values.map(value => {{
                 let stringValue = value.toString();
@@ -360,9 +403,11 @@ def html_interact(f, **kwargs):
         }} 
         update_{uid}();
 
-    """)
+    """
+    )
 
-    return textwrap.dedent(f"""\
+    return textwrap.dedent(
+        f"""\
         <style>
         .lm-Widget.jupyter-widgets.widget-inline-hbox {{
             display: flex; /* Aligns children (label, slider, readout) in a row */
@@ -377,10 +422,11 @@ def html_interact(f, **kwargs):
         }}
 
         .widget-readout {{
-            width: 120px;
+            width: 100px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            padding-left: 20px;
         }}
         </style>
 
@@ -390,51 +436,61 @@ def html_interact(f, **kwargs):
         {updater}
         {listeners}
         </script>
-    """)
+    """
+    )
 
 
-@doc_tag('interact')
+@doc_tag("interact")
 def interact(f, **kwargs):
     """
     Create an interactive visualization.
-    
+
     Parameters:
     - f: the function to visualize.  Most likely, f will create a plot
          or print some text.
     - kwargs: a list of parameters with the same names as f's parameters,
               each of which is set to a Control object.
-              
+
     Example:
 
     def mult(x,y,z):
         print(x * y * z)
-    
+
     interact(mult, x=Slider(0,10,0.5), y=Choice(1,2,4), z=Fixed(5))
     """
     widgets = make_widgets(f, kwargs)
     ipywidgets.interact(f, **widgets)
 
+
 def record(f, **kwargs):
     """
-    A helper to record interactions to make replaying with animations 
+    A helper to record interactions to make replaying with animations
     easier.  You should only use this function for when setting up such
     an animation.  Generally, only `interact` is needed.
     """
     widgets = make_widgets(f, kwargs)
     interactor = ipywidgets.interactive(f, **widgets)
-    
+
     controls = interactor.children[:-1]
-    out = ipywidgets.Textarea(f"def gen():\n    pass\n", layout=ipywidgets.Layout(width='100%', height="200px"))
-    interactor.children = (ipywidgets.Text(value='', description='_caption'),) + interactor.children + (out,)
-    
+    out = ipywidgets.Textarea(
+        f"def gen():\n    pass\n",
+        layout=ipywidgets.Layout(width="100%", height="200px"),
+    )
+    interactor.children = (
+        (ipywidgets.Text(value="", description="_caption"),)
+        + interactor.children
+        + (out,)
+    )
+
     def changed(change):
-        args = "; ".join([ f'{c.description} = {repr(c.value)}' for c in controls ])
-        out.value = out.value.replace("    pass\n", f"    {args}\n    yield locals()\n    pass\n")
-            
+        args = "; ".join([f"{c.description} = {repr(c.value)}" for c in controls])
+        out.value = out.value.replace(
+            "    pass\n", f"    {args}\n    yield locals()\n    pass\n"
+        )
+
     for child in controls:
-        child.observe(changed, names='value')
-        
+        child.observe(changed, names="value")
+
     changed(None)
 
     display(interactor)
-
