@@ -103,8 +103,8 @@ class CheckBox(Control):
     def _html(self, name):
         uid = self._uid
         return f"""\
-            <div class="lm-Widget jupyter-widgets widget-inline-hbox widget-checkbox">
-                <label class="widget-label" style="">​</label>
+            <div class="interact-inline">
+                <label class="interact-label" style=""></label>
                 <label class="widget-label-basic">
                     <input type="checkbox" id="checkbox_{uid}" {'checked' if self._v else ''}>
                     <span title="{name}">{name}</span>
@@ -124,23 +124,6 @@ class CheckBox(Control):
 
     def _values(self):
         return [True, False]
-
-
-# class Text(Control):
-#     """
-#     An adjustable text parameter.  This parameter is
-#     displayed as an editable text field.
-#     """
-#     def __init__(self, initial = "<enter text>"):
-#         """
-#         initial is the beginning text for the parameter.
-#         The default is a generic prompt.
-#         """
-#         super().__init__()
-#         self._v = initial
-
-#     def _html(self, name):
-#         raise ValueError("Cannot make a web interaction with text fields.")
 
 
 class Slider(Control):
@@ -175,27 +158,14 @@ class Slider(Control):
             params = f'min="{self._v[0]}" max="{self._v[1]}" step="{self._v[2]}"'
 
         return f"""\
-            <div class="lm-Widget jupyter-widgets widget-inline-hbox widget-slider widget-hslider">
-                <label class="widget-label" title="null" style="">{name}</label>
-                <div class="slider-container">
-                    <input type="range" class="ui-slider ui-corner-all ui-widget ui-widget-content slider ui-slider-horizontal"  id="slider_{uid}" {params}>
+            <div class="interact-inline">
+                <label class="interact-label">{name}</label>
+                <div>
+                    <input type="range" id="slider_{uid}" {params}>
                 </div>
-                <div class="widget-readout" style="" id="sliderValue_{uid}">7</div>
+                <div class="interact-readout" id="sliderValue_{uid}"></div>
             </div>
         """
-
-        return textwrap.dedent(
-            f"""\
-        <div class="lm-Widget jupyter-widgets widget-inline-hbox widget-slider widget-hslider"><label class="widget-label"
-                title="null" style="">{name}</label>
-            <div class="slider-container">
-                <div class="slider-container">
-                    <input type="range" class="ui-slider ui-corner-all ui-widget ui-widget-content slider ui-slider-horizontal"  id="slider_{uid}" {params}>
-                </div>
-            </div>
-            <div class="widget-readout" contenteditable="true" style="" id="sliderValue_{uid}">7</div>
-        </div>"""
-        )
 
     def _script(self):
         uid = self._uid
@@ -247,8 +217,8 @@ class Choice(Control):
         )
         return textwrap.dedent(
             f"""\
-            <div class="lm-Widget jupyter-widgets widget-inline-hbox widget-dropdown">
-                <label class="widget-label" for="choice_{uid}" style="">{name}</label>
+            <div class="interact-inline">
+                <label class="interact-label" for="choice_{uid}">{name}</label>
                     <select id="choice_{uid}">
                         {options}
                     </select>
@@ -300,13 +270,12 @@ def _permutations(f, kwargs):
         [(param, v) for v in control._values()] for param, control in kwargs.items()
     ]
 
-    plt.ioff()
-    res = list(itertools.product(*lists))
-    precomputed = [
-        (create_csv_line((list(zip(*params))[1])), htmlify(f(**dict(params))))
-        for params in res
-    ]
-    plt.ion()
+    with plt.ioff():
+        res = list(itertools.product(*lists))
+        precomputed = [
+            (create_csv_line((list(zip(*params))[1])), htmlify(f(**dict(params))))
+            for params in res
+        ]
 
     return json.dumps(dict(precomputed), indent=2)
 
@@ -341,32 +310,16 @@ def html_interact(f, **kwargs):
     uid = uuid()
     check_parameters(f, kwargs)
 
-    htmls, scripts, inputs = zip(
-        *[
-            (value._html(param), value._script(), value._input_var())
-            for (param, value) in kwargs.items()
-        ]
-    )
+    htmls = [value._html(param) for (param, value) in kwargs.items()]
+    scripts = [value._script() for (_, value) in kwargs.items()]
+    inputs = [value._input_var() for (_, value) in kwargs.items()]
 
     full_html = textwrap.dedent(
         f"""\
-        <div class="lm-Widget lm-Panel jp-OutputArea-child">
-            <div class="lm-Widget lm-Panel jp-OutputArea-output">
-                <div class="lm-Widget lm-Panel jupyter-widgets widget-container widget-box widget-vbox widget-interact">
+                <div>
                     {"  ".join(htmls)}
-                    <div class="lm-Widget lm-Panel jupyter-widgets widget-output">
-                        <div class="lm-Widget jp-OutputArea" style="">
-                            <div class="lm-Widget lm-Panel jp-OutputArea-child">
-                                <div class="lm-Widget jp-OutputPrompt jp-OutputArea-prompt"></div>
-                                <div class="lm-Widget jp-RenderedText jp-mod-trusted jp-OutputArea-output" id="output_{uid}">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <div class="interact-output" id="output_{uid}"></div>
                 </div>
-            </div>
-        </div>
-
         """
     )
     full_scripts = "\n".join(scripts)
@@ -409,24 +362,31 @@ def html_interact(f, **kwargs):
     return textwrap.dedent(
         f"""\
         <style>
-        .lm-Widget.jupyter-widgets.widget-inline-hbox {{
+        .interact-inline {{
             display: flex; /* Aligns children (label, slider, readout) in a row */
             align-items: center; /* Centers the items vertically */
+            font-family: var(--jp-ui-font-family);
         }}
 
-        .widget-label {{
+        .interact-label {{
             width: 120px;
             overflow: hidden; /* Prevents the text from spilling out */
             text-overflow: ellipsis; /* Adds ellipses if the text overflows */
             white-space: nowrap; /* Keeps the text on a single line */
+            text-align: right;
+            margin-right: 10px;            
         }}
 
-        .widget-readout {{
+        .interact-readout {{
             width: 100px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
             padding-left: 20px;
+        }}
+
+        .interact-output {{
+            margin-top: 10px;
         }}
         </style>
 
