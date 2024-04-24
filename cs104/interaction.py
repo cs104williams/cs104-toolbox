@@ -1,5 +1,5 @@
 """
-Objects for creating interactive Visualizations.
+Objects for creating interactive visualizations.
 
 The key function is `interact`, which is modeled after the underlying 
 matplotlib function.  The `interact` function takes a function, and then
@@ -26,6 +26,8 @@ import numpy as np
 import uuid
 import itertools
 import matplotlib.pyplot as plt
+from datascience import Table
+from abc import ABC, abstractmethod
 
 
 from .docs import doc_tag
@@ -40,27 +42,28 @@ def uuid():
     return f"i_{counter}"
 
 
-class Control:
+class Control(ABC):
     def __init__(self):
         self._uid = uuid()
 
     def __str__(self):
         return str(self._v)
 
+    @abstractmethod
     def _html(self, name):
-        return ""
+        pass
 
+    @abstractmethod
     def _script(self, name):
-        return ""
+        pass
 
+    @abstractmethod
     def _input_var(self, name):
-        return None
+        pass
 
-    def _value_function(self, name):
-        return None
-
+    @abstractmethod
     def _values(self):
-        return None
+        pass
 
 
 class Fixed(Control):
@@ -262,7 +265,7 @@ def _permutations(f, kwargs):
 
     def htmlify(v):
         if hasattr(v, "_repr_html_"):
-            return v._repr_html_()
+            return v._repr_html_()    # yep, fancy format!
         else:
             return f"<pre>{v}</pre>"
 
@@ -270,12 +273,19 @@ def _permutations(f, kwargs):
         [(param, v) for v in control._values()] for param, control in kwargs.items()
     ]
 
+    # Turn off plotting and make tables bigger while computing the function.
+    # Add any other special cases about displaying output here.
     with plt.ioff():
         res = list(itertools.product(*lists))
-        precomputed = [
-            (create_csv_line((list(zip(*params))[1])), htmlify(f(**dict(params))))
-            for params in res
-        ]
+        max_str_rows = Table.max_str_rows
+        try:
+            Table.max_str_rows = 30
+            precomputed = [
+                (create_csv_line((list(zip(*params))[1])), htmlify(f(**dict(params))))
+                for params in res
+            ]
+        finally:
+            Table.max_str_rows = max_str_rows
 
     return json.dumps(dict(precomputed), indent=2)
 
@@ -387,6 +397,7 @@ def html_interact(f, **kwargs):
 
         .interact-output {{
             margin-top: 10px;
+            background-color: white important!;
         }}
         </style>
 
