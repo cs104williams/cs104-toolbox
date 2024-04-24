@@ -80,7 +80,7 @@ class Fixed(Control):
         return ""
 
     def _script(self):
-        return f"""function {self._uid}_value() {{ return "{str(self._value)}"; }}"""
+        return ""
 
     def _input_var(self):
         return None
@@ -174,7 +174,7 @@ class Slider(Control):
         uid = self._uid
         return f"""\
             var _slider_{uid} = document.getElementById('slider_{uid}');
-            function {uid}_value() {{ return _slider_{uid}.value; }}
+            function {uid}_value() {{ return Number(_slider_{uid}.value).toFixed(6); }}
 
             var _sliderValue_{uid} = document.getElementById('sliderValue_{uid}');
             _sliderValue_{uid}.textContent = _slider_{uid}.value;
@@ -246,10 +246,16 @@ class Choice(Control):
 def create_csv_line(values):
     def escape_and_quote(value):
         # Convert value to string just in case it's not
-        str_value = str(value)
-        if type(value) == bool:
-            str_value = str_value.lower()
+        if isinstance(value, (int, float, np.int64, np.float64)):
+            str_value = f"{value:.6f}"
+            if str_value == '-0.000000':
+                str_value = '0.000000'
+        else:
+            str_value = str(value)
+            if type(value) == bool:
+                str_value = str_value.lower()
 
+        # print(type(value), str_value)
         # Escape double quotes by doubling them
         str_value = str_value.replace('"', '""')
         # Enclose in double quotes if the value contains a comma, newline, or double quote
@@ -270,7 +276,11 @@ def _permutations(f, kwargs):
             return f"<pre>{v}</pre>"
 
     lists = [
-        [(param, v) for v in control._values()] for param, control in kwargs.items()
+        [(param, v) for v in control._values()] for param, control in kwargs.items() if not isinstance(control, Fixed)
+    ]
+
+    fixed = [
+        (param, control._value) for param, control in kwargs.items() if isinstance(control, Fixed)
     ]
 
     # Turn off plotting and make tables bigger while computing the function.
@@ -280,10 +290,12 @@ def _permutations(f, kwargs):
         max_str_rows = Table.max_str_rows
         try:
             Table.max_str_rows = 30
+
             precomputed = [
-                (create_csv_line((list(zip(*params))[1])), htmlify(f(**dict(params))))
+                (create_csv_line((list(zip(*params))[1])), htmlify(f(**(dict(params) | dict(fixed)))))
                 for params in res
             ]
+            plt.close('all')
         finally:
             Table.max_str_rows = max_str_rows
 
@@ -346,7 +358,12 @@ def html_interact(f, **kwargs):
         f"""\
         function createCSVLine(values) {{
             return values.map(value => {{
-                let stringValue = value.toString();
+                let stringValue = ""
+                if (typeof value === "number") {{
+                    stringValue = value.toFixed(6);
+                }} else {{
+                    stringValue = value.toString();
+                }}
                 // Escape existing double quotes
                 stringValue = stringValue.replace(/"/g, '""');
                 // If the value contains a comma, newline or double quote, enclose it in double quotes
@@ -361,7 +378,7 @@ def html_interact(f, **kwargs):
         var _cache_{uid} = {_permutations(f, kwargs)};
 
         function update_{uid}() {{
-            var text = createCSVLine([{", ".join([ f"{value._uid}_value()" for _, value in kwargs.items() ])}]);
+            var text = createCSVLine([{", ".join([ f"{control._uid}_value()" for _, control in kwargs.items() if not isinstance(control, Fixed)])}]);
             console.log(text)
             _output_{uid}.innerHTML = _cache_{uid}[text];
         }} 
