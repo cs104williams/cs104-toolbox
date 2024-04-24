@@ -332,14 +332,17 @@ def plot_residuals(table, x_label, y_label, a, b):
     return plot
     
 @doc_tag(path='inference-library-ref.html')
-def plot_regression_and_residuals(table, x_label, y_label, a, b):
+def plot_regression_and_residuals(table, x_label, y_label, a, b, figure=None):
     """
     Left plot: a scatter plot and line for the provided table and slope/intercept
     Right plot: The residuals of the predictions.
     Returns the Plot object for the scatter plot.
     """
     
-    with Figure(1,2):
+    if figure is None:
+        figure = Figure(1,2)
+    
+    with figure:
         scatter = plot_scatter_with_line(table, x_label, y_label, a, b)
         plot_residuals(table, x_label, y_label, a, b)
         return scatter

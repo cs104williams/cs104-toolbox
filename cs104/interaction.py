@@ -20,7 +20,7 @@ __all__ = [
 
 import json
 import textwrap
-from IPython.display import display
+from IPython.display import display, HTML
 import ipywidgets
 import numpy as np
 import uuid
@@ -80,7 +80,7 @@ class Fixed(Control):
         return ""
 
     def _script(self):
-        return f"""function {self._uid}_value() {{ return {self._value}; }}"""
+        return f"""function {self._uid}_value() {{ return "{str(self._value)}"; }}"""
 
     def _input_var(self):
         return None
@@ -362,6 +362,7 @@ def html_interact(f, **kwargs):
 
         function update_{uid}() {{
             var text = createCSVLine([{", ".join([ f"{value._uid}_value()" for _, value in kwargs.items() ])}]);
+            console.log(text)
             _output_{uid}.innerHTML = _cache_{uid}[text];
         }} 
         update_{uid}();
@@ -369,7 +370,7 @@ def html_interact(f, **kwargs):
     """
     )
 
-    return textwrap.dedent(
+    return HTML(textwrap.dedent(
         f"""\
         <style>
         .interact-inline {{
@@ -408,7 +409,7 @@ def html_interact(f, **kwargs):
         {listeners}
         </script>
     """
-    )
+    ))
 
 
 @doc_tag("interact")
