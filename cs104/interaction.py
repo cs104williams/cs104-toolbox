@@ -18,6 +18,7 @@ __all__ = [
     "html_interact",
 ]
 
+import io
 import json
 import textwrap
 from IPython.display import display, HTML
@@ -26,7 +27,7 @@ import numpy as np
 import uuid
 import itertools
 import matplotlib.pyplot as plt
-from datascience import Table
+from datascience import Table, Plot, Figure
 from abc import ABC, abstractmethod
 
 
@@ -65,6 +66,10 @@ class Control(ABC):
     def _values(self):
         pass
 
+    @abstractmethod
+    def _format(self, v):
+        pass
+
 
 class Fixed(Control):
     """
@@ -87,6 +92,9 @@ class Fixed(Control):
 
     def _values(self):
         return [self._value]
+
+    def _format(self, v):
+        return None
 
 
 class CheckBox(Control):
@@ -127,6 +135,9 @@ class CheckBox(Control):
 
     def _values(self):
         return [True, False]
+
+    def _format(self, v):
+        return "true" if v else "false"
 
 
 class Slider(Control):
@@ -195,6 +206,12 @@ class Slider(Control):
         )
         return np.arange(start, stop + step, step)
 
+    def _format(self, v):
+        str_value = f"{v:.6f}"
+        if str_value == "-0.000000":
+            str_value = "0.000000"
+        return str_value
+
 
 class Choice(Control):
     """
@@ -233,7 +250,7 @@ class Choice(Control):
         uid = self._uid
         return f"""
                 var _choice_{uid} = document.getElementById('choice_{uid}');
-                function {uid}_value() {{ return _choice_{uid}.value; }}
+                function {uid}_value() {{ return String(_choice_{uid}.value); }}
                 """
 
     def _input_var(self):
@@ -242,18 +259,14 @@ class Choice(Control):
     def _values(self):
         return self._v
 
+    def _format(self, v):
+        return str(v)
+
 
 def create_csv_line(values):
     def escape_and_quote(value):
         # Convert value to string just in case it's not
-        if isinstance(value, (int, float, np.int64, np.float64)):
-            str_value = f"{value:.6f}"
-            if str_value == '-0.000000':
-                str_value = '0.000000'
-        else:
-            str_value = str(value)
-            if type(value) == bool:
-                str_value = str_value.lower()
+        str_value = str(value)
 
         # print(type(value), str_value)
         # Escape double quotes by doubling them
@@ -270,17 +283,32 @@ def create_csv_line(values):
 def _permutations(f, kwargs):
 
     def htmlify(v):
+        if type(v) == Plot or type(v) == Figure:
+            fig = plt.gcf()
+            fig.set_tight_layout(True)
+            fid = uuid()
+            filename = f"image-{fid}.png"
+            with open(filename, "wb") as f:
+                plt.savefig(f, format="png")
+            size = fig.get_size_inches() * fig.dpi  # size in pixels
+            print(size)
+            return f'<img width="{size[0]}" height="{size[1]}" src="{filename}"</img>'
+
         if hasattr(v, "_repr_html_"):
-            return v._repr_html_()    # yep, fancy format!
+            return v._repr_html_()  # yep, fancy format!
         else:
             return f"<pre>{v}</pre>"
 
     lists = [
-        [(param, v) for v in control._values()] for param, control in kwargs.items() if not isinstance(control, Fixed)
+        [(param, (v, control._format(v))) for v in control._values()]
+        for param, control in kwargs.items()
+        if not isinstance(control, Fixed)
     ]
 
     fixed = [
-        (param, control._value) for param, control in kwargs.items() if isinstance(control, Fixed)
+        (param, control._value)
+        for param, control in kwargs.items()
+        if isinstance(control, Fixed)
     ]
 
     # Turn off plotting and make tables bigger while computing the function.
@@ -291,11 +319,18 @@ def _permutations(f, kwargs):
         try:
             Table.max_str_rows = 30
 
-            precomputed = [
-                (create_csv_line((list(zip(*params))[1])), htmlify(f(**(dict(params) | dict(fixed)))))
-                for params in res
-            ]
-            plt.close('all')
+            precomputed = []
+            for params in res:
+                keys = [(x, v) for (x, (_, v)) in params]
+                values = [(x, v) for (x, (v, _)) in params]
+                precomputed += [
+                    (
+                        create_csv_line((list(zip(*keys))[1])),
+                        htmlify(f(**(dict(values) | dict(fixed)))),
+                    )
+                ]
+            print(precomputed)
+            plt.close("all")
         finally:
             Table.max_str_rows = max_str_rows
 
@@ -387,8 +422,9 @@ def html_interact(f, **kwargs):
     """
     )
 
-    return HTML(textwrap.dedent(
-        f"""\
+    return HTML(
+        textwrap.dedent(
+            f"""\
         <style>
         .interact-inline {{
             display: flex; /* Aligns children (label, slider, readout) in a row */
@@ -426,7 +462,8 @@ def html_interact(f, **kwargs):
         {listeners}
         </script>
     """
-    ))
+        )
+    )
 
 
 @doc_tag("interact")
