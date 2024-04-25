@@ -280,19 +280,23 @@ def create_csv_line(values):
     return ",".join(escape_and_quote(value) for value in values)
 
 
-def _permutations(f, kwargs):
+images = []
 
+
+def _permutations(f, kwargs):
     def htmlify(v):
+        global images
         if type(v) == Plot or type(v) == Figure:
             fig = plt.gcf()
             fig.set_tight_layout(True)
             fid = uuid()
             filename = f"image-{fid}.png"
+            images += [filename]
             with open(filename, "wb") as f:
                 plt.savefig(f, format="png")
             size = fig.get_size_inches() * fig.dpi  # size in pixels
-            print(size)
-            return f'<img width="{size[0]}" height="{size[1]}" src="{filename}"</img>'
+            # return f'<img width="{size[0]}" height="{size[1]}" src="{filename}">'
+            return f'<img src="{filename}">'
 
         if hasattr(v, "_repr_html_"):
             return v._repr_html_()  # yep, fancy format!
@@ -314,6 +318,8 @@ def _permutations(f, kwargs):
     # Turn off plotting and make tables bigger while computing the function.
     # Add any other special cases about displaying output here.
     with plt.ioff():
+        global images
+        images = []
         res = list(itertools.product(*lists))
         max_str_rows = Table.max_str_rows
         try:
@@ -329,12 +335,11 @@ def _permutations(f, kwargs):
                         htmlify(f(**(dict(values) | dict(fixed)))),
                     )
                 ]
-            print(precomputed)
             plt.close("all")
         finally:
             Table.max_str_rows = max_str_rows
 
-    return json.dumps(dict(precomputed), indent=2)
+    return json.dumps(dict(precomputed), indent=2), images
 
 
 def check_parameters(f, kwargs):
@@ -389,6 +394,9 @@ def html_interact(f, **kwargs):
         ]
     )
 
+    data, images = _permutations(f, kwargs)
+    print(images)
+
     updater = textwrap.dedent(
         f"""\
         function createCSVLine(values) {{
@@ -410,7 +418,7 @@ def html_interact(f, **kwargs):
         }}
                               
         var _output_{uid} = document.getElementById('output_{uid}');
-        var _cache_{uid} = {_permutations(f, kwargs)};
+        var _cache_{uid} = {data};
 
         function update_{uid}() {{
             var text = createCSVLine([{", ".join([ f"{control._uid}_value()" for _, control in kwargs.items() if not isinstance(control, Fixed)])}]);
@@ -418,9 +426,30 @@ def html_interact(f, **kwargs):
             _output_{uid}.innerHTML = _cache_{uid}[text];
         }} 
         update_{uid}();
-
     """
     )
+
+    if images:
+        preload = f"""
+            <div class="hidden">
+                <script type="text/javascript">
+                    <!--//--><![CDATA[//><!--
+                        var images = new Array()
+                        function preload() {{
+                            for (i = 0; i < preload.arguments.length; i++) {{
+                                images[i] = new Image()
+                                images[i].src = preload.arguments[i]
+                            }}
+                        }}
+                        preload(
+                            {",".join([ f'"{x}"' for x in images ])}
+                        )
+                    //--><!]]>
+                </script>
+            </div>
+            """
+    else:
+        preload = ""
 
     return HTML(
         textwrap.dedent(
@@ -461,6 +490,7 @@ def html_interact(f, **kwargs):
         {updater}
         {listeners}
         </script>
+        {preload}
     """
         )
     )
