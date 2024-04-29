@@ -8,7 +8,26 @@ https://cs104williams.github.io/assets/inference-library-ref.html
 
 """
 
-# __all__ = [ 'linear_regression' ]
+__all__ = [
+    "simulate",
+    "simulate_sample_statistic",
+    "empirical_pvalue",
+    "permutation_sample",
+    "abs_difference_of_means",
+    "simulate_permutation_statistic",
+    "confidence_interval",
+    "bootstrap_statistic",
+    "pearson_correlation",
+    "line_predictions",
+    "mean_squared_error",
+    "linear_regression",
+    "residuals",
+    "r2_score",
+    "plot_scatter_with_line",
+    "plot_residuals",
+    "plot_regression_and_residuals",
+    "plot_regression_line_and_mse_heat",
+]
 
 from datascience import *
 import numpy as np
@@ -19,10 +38,11 @@ from .docs import doc_tag
 
 ###
 
-@doc_tag(path='inference-library-ref.html')
+
+@doc_tag(path="inference-library-ref.html")
 def simulate(make_one_outcome, num_trials):
     """
-    Return an array of num_trials values, each 
+    Return an array of num_trials values, each
     of which was created by calling make_one_outcome().
     """
     outcomes = make_array()
@@ -32,6 +52,7 @@ def simulate(make_one_outcome, num_trials):
 
     return outcomes
 
+
 # @doc_tag(path='inference-library-ref.html')
 # def array_hist(values, **kwargs):
 #     """
@@ -40,26 +61,28 @@ def simulate(make_one_outcome, num_trials):
 #     """
 #     label = "Values"
 #     table = Table().with_columns(label, values)
-    
+
 #     plot = table.hist(label, **kwargs)
 #     return plot
 
-@doc_tag(path='inference-library-ref.html')
-def simulate_sample_statistic(make_one_sample, sample_size,
-                              compute_sample_statistic, num_trials):
+
+@doc_tag(path="inference-library-ref.html")
+def simulate_sample_statistic(
+    make_one_sample, sample_size, compute_sample_statistic, num_trials
+):
     """
     Simulates `num_trials` sampling steps and returns an array of the
     statistic for those samples.  The parameters are:
 
-    * make_one_sample: a function that takes an integer n and returns a 
+    * make_one_sample: a function that takes an integer n and returns a
                        sample as an array of n elements.
-    
+
     * sample_size: the size of the samples to use in the simulation.
-    
-    * compute_statistic: a function that takes a sample as 
+
+    * compute_statistic: a function that takes a sample as
                          an array and returns the statistic for that sample.
                          The return value should be a single numerical value.
-    
+
     * num_trials: the number of simulation steps to perform.
     """
 
@@ -70,18 +93,22 @@ def simulate_sample_statistic(make_one_sample, sample_size,
         simulated_statistics = np.append(simulated_statistics, sample_statistic)
     return simulated_statistics
 
-@doc_tag(path='inference-library-ref.html')
-def empirical_pvalue(null_statistics, observed_statistic): 
+
+@doc_tag(path="inference-library-ref.html")
+def empirical_pvalue(null_statistics, observed_statistic):
     """
-    Return the proportion of the null statistics that are greater than 
+    Return the proportion of the null statistics that are greater than
     or equal to the observed statistic.
     """
-    return np.count_nonzero(null_statistics >= observed_statistic) / len(null_statistics)
+    return np.count_nonzero(null_statistics >= observed_statistic) / len(
+        null_statistics
+    )
 
 
-###        
-        
-@doc_tag(path='inference-library-ref.html')
+###
+
+
+@doc_tag(path="inference-library-ref.html")
 def permutation_sample(table, group_label):
     """
     Takes a table and the label of a column used to group rows.
@@ -91,10 +118,10 @@ def permutation_sample(table, group_label):
 
     # array of shuffled labels
     shuffled_labels = table.sample(with_replacement=False).column(group_label)
-    
+
     # table of numerical variable and shuffled labels
-    shuffled_table = table.with_column('Shuffled Label', shuffled_labels)
-    
+    shuffled_table = table.with_column("Shuffled Label", shuffled_labels)
+
     return shuffled_table
 
 
@@ -103,7 +130,7 @@ def abs_difference_of_means(table, group_label, value_label):
     Takes a table, the label of the column used to divide rows into
     two groups, and the label of the column storing the values
     for each row.
-    Returns the absolute difference of the mean 
+    Returns the absolute difference of the mean
     value for the two groups.
     """
 
@@ -114,100 +141,107 @@ def abs_difference_of_means(table, group_label, value_label):
     if value_label not in table.labels:
         raise ValueError(
             'The column "{}" is not in the table. The table contains '
-            'these columns: {}'
-            .format(value_label, ', '.join(table.labels)))
-    
+            "these columns: {}".format(value_label, ", ".join(table.labels))
+        )
+
     # table containing group means
     means_table = table.group(group_label, np.mean)
-    
+
     # array of group means
-    means = means_table.column(value_label + ' mean')
-    
+    means = means_table.column(value_label + " mean")
+
     return abs(means.item(0) - means.item(1))
 
 
-
-@doc_tag(path='inference-library-ref.html')
-def simulate_permutation_statistic(table, group_label, value_label, 
-                                   num_trials):
+@doc_tag(path="inference-library-ref.html")
+def simulate_permutation_statistic(table, group_label, value_label, num_trials):
     """
     Simulates `num_trials` sampling steps and returns an array of the
-    `abs_difference_of_means` statistic for those samples.  
+    `abs_difference_of_means` statistic for those samples.
 
     The parameters are:
 
     * table:       the Table to which we'll apply a permutation test.
-    
+
     * group_label: the label of a column used to divide the rows into two groups.
-    
+
     * value_label: the label of the column storing the values
                    for each row.  This column should contain numerical
                    values.  The values are restricted to 0 and 1, we can
-                   interpret the sample statistic as being the absolute 
+                   interpret the sample statistic as being the absolute
                    difference in the proportion of 1's in the two groups.
-    
+
     * num_trials:  the number of permutations to compute.
     """
 
     sample_statistics = make_array()
     for i in np.arange(num_trials):
         one_sample = permutation_sample(table, group_label)
-        sample_statistic = abs_difference_of_means(one_sample, "Shuffled Label", value_label)
+        sample_statistic = abs_difference_of_means(
+            one_sample, "Shuffled Label", value_label
+        )
         sample_statistics = np.append(sample_statistics, sample_statistic)
     return sample_statistics
 
 
 ######################################################################
-# Bootstrapping: generic code that can be resued 
+# Bootstrapping: generic code that can be resued
 ######################################################################
 
-@doc_tag(path='inference-library-ref.html')
+
+@doc_tag(path="inference-library-ref.html")
 def confidence_interval(ci_percent, statistics):
     """
     Return an array with the lower and upper bound of the ci_percent confidence interval.
     """
     # percent in each of the the left/right tails
-    percent_in_each_tail = (100 - ci_percent) / 2   
+    percent_in_each_tail = (100 - ci_percent) / 2
     left = percentile(percent_in_each_tail, statistics)
     right = percentile(100 - percent_in_each_tail, statistics)
     return make_array(left, right)
 
-@doc_tag(path='inference-library-ref.html')
-def bootstrap_statistic(observed_sample, compute_statistic, num_trials): 
+
+@doc_tag(path="inference-library-ref.html")
+def bootstrap_statistic(observed_sample, compute_statistic, num_trials):
     """
     Creates num_trials resamples of the initial sample.
     Returns an array of the provided statistic for those samples.
 
     * observed_sample: the initial sample, as an array.
-    
-    * compute_statistic: a function that takes a sample as 
+
+    * compute_statistic: a function that takes a sample as
                          an array and returns the statistic for that
-                         sample. 
-    
+                         sample.
+
     * num_trials: the number of bootstrap samples to create.
 
     """
 
     # Check that observed_sample is an array!
     if not isinstance(observed_sample, np.ndarray):
-        raise ValueError('The first parameter to bootstrap_statistic must be a sample represented as an array, not a value of type ' + str(type(observed_sample).__name__))
+        raise ValueError(
+            "The first parameter to bootstrap_statistic must be a sample represented as an array, not a value of type "
+            + str(type(observed_sample).__name__)
+        )
 
     statistics = make_array()
-    
-    for i in np.arange(0, num_trials): 
-        #Key: in bootstrapping we must always sample with replacement 
+
+    for i in np.arange(0, num_trials):
+        # Key: in bootstrapping we must always sample with replacement
         simulated_resample = np.random.choice(observed_sample, len(observed_sample))
-        
+
         resample_statistic = compute_statistic(simulated_resample)
         statistics = np.append(statistics, resample_statistic)
-    
+
     return statistics
 
+
 ######################################################################
-# Linear regression: generic code that can be resued 
+# Linear regression: generic code that can be resued
 ######################################################################
 
-@doc_tag(path='inference-library-ref.html')
+
+@doc_tag(path="inference-library-ref.html")
 def pearson_correlation(table, x_label, y_label):
     """
     Return the correlation coefficient capturing the sign
@@ -218,20 +252,22 @@ def pearson_correlation(table, x_label, y_label):
     y = table.column(y_label)
     x_mean = np.mean(x)
     y_mean = np.mean(y)
-    numerator = sum((x - x_mean) * (y - y_mean)) 
-    denominator = np.sqrt(sum((x - x_mean)**2)) * np.sqrt(sum((y - y_mean)**2))
-    return numerator / denominator 
-    
-@doc_tag(path='inference-library-ref.html')
-def line_predictions(a, b, x): 
+    numerator = sum((x - x_mean) * (y - y_mean))
+    denominator = np.sqrt(sum((x - x_mean) ** 2)) * np.sqrt(sum((y - y_mean) ** 2))
+    return numerator / denominator
+
+
+@doc_tag(path="inference-library-ref.html")
+def line_predictions(a, b, x):
     """
     Computes the prediction  y_hat = a * x + b
     where a and b are the slope and intercept and x is the set of x-values.
     """
     return a * x + b
 
-@doc_tag(path='inference-library-ref.html')
-def mean_squared_error(table, x_label, y_label, a, b): 
+
+@doc_tag(path="inference-library-ref.html")
+def mean_squared_error(table, x_label, y_label, a, b):
     """
     Returns the mean squared error for the line described by slope a and
     intercept b when used to fit the data in the tables x_label and y_label
@@ -241,112 +277,123 @@ def mean_squared_error(table, x_label, y_label, a, b):
     residual = table.column(y_label) - y_hat
     return np.mean(residual**2)
 
-@doc_tag(path='inference-library-ref.html')
+
+@doc_tag(path="inference-library-ref.html")
 def linear_regression(table, x_label, y_label):
     """
-    Return an array containing the slope and intercept of the line best fitting 
+    Return an array containing the slope and intercept of the line best fitting
     the table's data according to the mean square error loss function.  Example:
-    
-    optimal = linear_regression(fortis, 'Beak length, mm', 'Beak depth, mm') 
+
+    optimal = linear_regression(fortis, 'Beak length, mm', 'Beak depth, mm')
     a = optimal.item(0)
-    b = optimal.item(1)    
-    
+    b = optimal.item(1)
+
     OR
-    
-    a,b = linear_regression(fortis, 'Beak length, mm', 'Beak depth, mm') 
+
+    a,b = linear_regression(fortis, 'Beak length, mm', 'Beak depth, mm')
     """
-    
+
     # A helper function that takes *only* the two variables we need to optimize.
     # This is necessary to use minimize below, because the function we want
     # to minimize cannot take any parameters beyond those it will solve for.
     def mse_for_a_b(a, b):
         return mean_squared_error(table, x_label, y_label, a, b)
-    
+
     # We can use a built-in function `minimize` that uses gradiant descent
-    # to find the optimal a and b for our mean squared error function 
+    # to find the optimal a and b for our mean squared error function
     return minimize(mse_for_a_b)
 
-@doc_tag(path='inference-library-ref.html')
-def residuals(table, x_label, y_label, a, b): 
+
+@doc_tag(path="inference-library-ref.html")
+def residuals(table, x_label, y_label, a, b):
     """
-    Residuals = y - y_hat 
-    where y_hat are the predictions from the line characterized by 
+    Residuals = y - y_hat
+    where y_hat are the predictions from the line characterized by
     y = ax+b
-    """ 
+    """
     x = table.column(x_label)
     y = table.column(y_label)
     y_hat = line_predictions(a, b, x)
     residual = y - y_hat
     return residual
 
-@doc_tag(path='inference-library-ref.html')
+
+@doc_tag(path="inference-library-ref.html")
 def r2_score(table, x_label, y_label, a, b):
     """
     R-squared score (also called the "coefficient of determination")
     for the predictions given y=ax+b
-    """ 
+    """
     residual = residuals(table, x_label, y_label, a, b)
     numerator = sum(residual**2)
     y = table.column(y_label)
     y_mean = np.mean(y)
-    denominator = sum((y-y_mean)**2)
-    return 1 - numerator/denominator
+    denominator = sum((y - y_mean) ** 2)
+    return 1 - numerator / denominator
+
 
 ######################################################################
 # Plotting: this code can be reused to plot aspects of linear regression
 ######################################################################
 
-@doc_tag(path='inference-library-ref.html')
+
+@doc_tag(path="inference-library-ref.html")
 def plot_scatter_with_line(table, x_label, y_label, a, b):
     """
     Draw a scatter plot of the given table data overlaid with
     a line having the given slope a and intercept b.
     """
-    plot = table.scatter(x_label, y_label, title='a = ' + str(round(a,3)) + '; b = ' + str(round(b,3)))
+    plot = table.scatter(
+        x_label, y_label, title="a = " + str(round(a, 3)) + "; b = " + str(round(b, 3))
+    )
 
     x = table.column(x_label)
     xlims = make_array(min(x), max(x))
     plot.line(xlims, a * xlims + b, lw=2, color="C0")
-    
+
     return plot
-    
 
 
-@doc_tag(path='inference-library-ref.html')
+@doc_tag(path="inference-library-ref.html")
 def plot_residuals(table, x_label, y_label, a, b):
     """
-    Plots x-axis as the original x values 
-    and the y-axis as the residuals of the predictions 
+    Plots x-axis as the original x values
+    and the y-axis as the residuals of the predictions
 
-    Also plots the y=0 horizontal line 
-    """ 
+    Also plots the y=0 horizontal line
+    """
     x = table.column(x_label)
     residual = residuals(table, x_label, y_label, a, b)
     largest_residual = abs(max(residual))
-    residual_table = Table().with_columns(x_label, x, 'residuals', residual)
-    plot = residual_table.scatter(x_label, 'residuals',
-                                  color='C3', alpha=0.7,
-                                  title='Residual Plot',
-                                  ylim=1.05 * make_array(-largest_residual, largest_residual))
-    plot.line(y = 0, color='darkblue', lw=2, zorder=0.9)
+    residual_table = Table().with_columns(x_label, x, "residuals", residual)
+    plot = residual_table.scatter(
+        x_label,
+        "residuals",
+        color="C3",
+        alpha=0.7,
+        title="Residual Plot",
+        ylim=1.05 * make_array(-largest_residual, largest_residual),
+    )
+    plot.line(y=0, color="darkblue", lw=2, zorder=0.9)
     return plot
-    
-@doc_tag(path='inference-library-ref.html')
+
+
+@doc_tag(path="inference-library-ref.html")
 def plot_regression_and_residuals(table, x_label, y_label, a, b, figure=None):
     """
     Left plot: a scatter plot and line for the provided table and slope/intercept
     Right plot: The residuals of the predictions.
     Returns the Plot object for the scatter plot.
     """
-    
+
     if figure is None:
-        figure = Figure(1,2)
-    
+        figure = Figure(1, 2)
+
     with figure:
         scatter = plot_scatter_with_line(table, x_label, y_label, a, b)
         plot_residuals(table, x_label, y_label, a, b)
         return scatter
-    
+
 
 ######################################################################
 # The following are more sophisticated plotting functions we used
@@ -355,53 +402,71 @@ def plot_regression_and_residuals(table, x_label, y_label, a, b, figure=None):
 ######################################################################
 
 
-def plot_regression_line_and_mse_heat(table, x_label, y_label, a, b, show_mse=None, a_space=None, b_space=None, _fig=None):
+def plot_regression_line_and_mse_heat(
+    table, x_label, y_label, a, b, show_mse=None, a_space=None, b_space=None, _fig=None
+):
     """
     Left plot: the scatter plot with line y=ax+b
-    Right plot: None, 2D heat map of MSE, or 3D surface plot of MSE 
+    Right plot: None, 2D heat map of MSE, or 3D surface plot of MSE
     Returns the Plot object for the scatter plot
     """
-    if a_space is None: a_space = np.linspace(-10*a, 10*a, 200)
-    if b_space is None: b_space = np.linspace(-10*b, 10*b, 200)
+    if a_space is None:
+        a_space = np.linspace(-10 * a, 10 * a, 200)
+    if b_space is None:
+        b_space = np.linspace(-10 * b, 10 * b, 200)
     a_space, b_space = np.meshgrid(a_space, b_space)
     broadcasted = np.broadcast(a_space, b_space)
     mses = np.empty(broadcasted.shape)
-    mses.flat = [mean_squared_error(table, x_label, y_label, a, b) for (a,b) in broadcasted]
-        
+    mses.flat = [
+        mean_squared_error(table, x_label, y_label, a, b) for (a, b) in broadcasted
+    ]
+
     if _fig is None:
-        _fig = Figure(1,2)
-        
+        _fig = Figure(1, 2)
+
     ax = _fig.axes()
 
-    #Plot the scatter plot and best fit line on the left
+    # Plot the scatter plot and best fit line on the left
     with Plot(ax[0]):
         scatter = plot_scatter_with_line(table, x_label, y_label, a, b)
 
-    if show_mse == '2d':
+    if show_mse == "2d":
         with Plot(ax[1]):
             mse = mean_squared_error(table, x_label, y_label, a, b)
-            ax[1].pcolormesh(a_space, b_space, mses, cmap='viridis', 
-                             norm=colors.PowerNorm(gamma=0.25,
-                                                   vmin=mses.min(), 
-                                                   vmax=mses.max()));
-            ax[1].scatter(a,b,s=100,color='red');
-            ax[1].set_xlabel('a')
-            ax[1].set_ylabel('b')
-            ax[1].set_title('Mean Squared Error: ' + str(np.round(mse, 3)))
+            ax[1].pcolormesh(
+                a_space,
+                b_space,
+                mses,
+                cmap="viridis",
+                norm=colors.PowerNorm(gamma=0.25, vmin=mses.min(), vmax=mses.max()),
+            )
+            ax[1].scatter(a, b, s=100, color="red")
+            ax[1].set_xlabel("a")
+            ax[1].set_ylabel("b")
+            ax[1].set_title("Mean Squared Error: " + str(np.round(mse, 3)))
 
-    elif show_mse == "3d": 
-        ax[1] = plots.subplot(1, 2, 2, projection='3d')
+    elif show_mse == "3d":
+        ax[1] = plots.subplot(1, 2, 2, projection="3d")
         with Plot(ax[1]):
-            ax[1].plot_surface(a_space, b_space, mses,
-                            cmap='viridis', 
-                            antialiased=False, 
-                            linewidth=0,
-                            norm = colors.PowerNorm(gamma=0.25,vmin=mses.min(), vmax=mses.max()))
+            ax[1].plot_surface(
+                a_space,
+                b_space,
+                mses,
+                cmap="viridis",
+                antialiased=False,
+                linewidth=0,
+                norm=colors.PowerNorm(gamma=0.25, vmin=mses.min(), vmax=mses.max()),
+            )
 
-            ax[1].plot([a],[b],[mean_squared_error(table, x_label, y_label, a, b)], 'ro',zorder=3);
-            ax[1].set_xlabel('a')
-            ax[1].set_ylabel('b')
-            ax[1].set_title('Mean Squared Error')
-    
+            ax[1].plot(
+                [a],
+                [b],
+                [mean_squared_error(table, x_label, y_label, a, b)],
+                "ro",
+                zorder=3,
+            )
+            ax[1].set_xlabel("a")
+            ax[1].set_ylabel("b")
+            ax[1].set_title("Mean Squared Error")
+
     return scatter
-    

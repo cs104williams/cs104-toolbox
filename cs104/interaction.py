@@ -14,11 +14,11 @@ __all__ = [
     "CheckBox",
     "Slider",
     "Choice",
-    "record",
     "html_interact",
 ]
 
-import io
+from numbers import Integral
+import os
 import json
 import textwrap
 from IPython.display import display, HTML
@@ -67,6 +67,10 @@ class Control(ABC):
         pass
 
     @abstractmethod
+    def _downsample(self):
+        pass
+
+    @abstractmethod
     def _format(self, v):
         pass
 
@@ -92,6 +96,9 @@ class Fixed(Control):
 
     def _values(self):
         return [self._value]
+
+    def _downsample(self):
+        pass
 
     def _format(self, v):
         return None
@@ -136,6 +143,9 @@ class CheckBox(Control):
     def _values(self):
         return [True, False]
 
+    def _downsample(self):
+        pass
+
     def _format(self, v):
         return "true" if v else "false"
 
@@ -162,14 +172,17 @@ class Slider(Control):
         if np.shape(args) != (2,) and np.shape(args) != (3,):
             raise ValueError(f"{args} is not a valid range for a Slider.")
 
+        if np.shape(args) == (2,):
+            if all(isinstance(_, Integral) for _ in args):
+                args += (1,)  # default step of 1 -- see ipywidgets code
+            else:
+                args += (0.1,)  # default step of 0.1
+
         self._v = args
 
     def _html(self, name):
         uid = self._uid
-        if len(self._v) == 2:
-            params = f'min="{self._v[0]}" max="{self._v[1]}"'
-        else:
-            params = f'min="{self._v[0]}" max="{self._v[1]}" step="{self._v[2]}"'
+        params = f'min="{self._v[0]}" max="{self._v[1]}" step="{self._v[2]}"'
 
         return f"""\
             <div class="interact-inline">
@@ -199,12 +212,11 @@ class Slider(Control):
         return f"_slider_{self._uid}"
 
     def _values(self):
-        start, stop, step = (
-            self._v[0],
-            self._v[1],
-            (self._v[2] if len(self._v) == 3 else 1),
-        )
+        start, stop, step = self._v
         return np.arange(start, stop + step, step)
+
+    def _downsample(self):
+        self._v = (self._v[0], self._v[1], 2 * self._v[2])
 
     def _format(self, v):
         str_value = f"{v:.6f}"
@@ -239,7 +251,7 @@ class Choice(Control):
             f"""\
             <div class="interact-inline">
                 <label class="interact-label" for="choice_{uid}">{name}</label>
-                    <select id="choice_{uid}">
+                    <select id="choice_{uid}" class="custom-select interact-select">
                         {options}
                     </select>
             </div>
@@ -258,6 +270,12 @@ class Choice(Control):
 
     def _values(self):
         return self._v
+
+    def _downsample(self):
+        indices = np.linspace(
+            0, len(self.v) - 1, len(self._v) // 2 + 1, endpoint=True, dtype=int
+        )
+        self._v = [self._v[i] for i in indices]
 
     def _format(self, v):
         return str(v)
@@ -280,28 +298,28 @@ def create_csv_line(values):
     return ",".join(escape_and_quote(value) for value in values)
 
 
-images = []
-
-
 def _permutations(f, kwargs):
     def htmlify(v):
-        global images
-        if type(v) == Plot or type(v) == Figure:
+        if (v == None and plt.get_fignums()) or type(v) == Plot or type(v) == Figure:
             fig = plt.gcf()
             fig.set_tight_layout(True)
             fid = uuid()
-            filename = f"image-{fid}.png"
-            images += [filename]
+
+            os.makedirs("images", exist_ok=True)
+            prefix = os.getenv("LECTURE_NAME", "ex")
+            filename = f"images/{prefix}-image-{fid}.png"
+
             with open(filename, "wb") as f:
                 plt.savefig(f, format="png")
             size = fig.get_size_inches() * fig.dpi  # size in pixels
-            # return f'<img width="{size[0]}" height="{size[1]}" src="{filename}">'
-            return f'<img src="{filename}">'
+
+            plt.close("all")
+            return f'<img src="{filename}">', filename
 
         if hasattr(v, "_repr_html_"):
-            return v._repr_html_()  # yep, fancy format!
+            return v._repr_html_(), None  # yep, fancy format!
         else:
-            return f"<pre>{v}</pre>"
+            return f"<pre>{v}</pre>", None
 
     lists = [
         [(param, (v, control._format(v))) for v in control._values()]
@@ -317,9 +335,8 @@ def _permutations(f, kwargs):
 
     # Turn off plotting and make tables bigger while computing the function.
     # Add any other special cases about displaying output here.
+    image_filenames = []  # the image files we create.
     with plt.ioff():
-        global images
-        images = []
         res = list(itertools.product(*lists))
         max_str_rows = Table.max_str_rows
         try:
@@ -329,17 +346,19 @@ def _permutations(f, kwargs):
             for params in res:
                 keys = [(x, v) for (x, (_, v)) in params]
                 values = [(x, v) for (x, (v, _)) in params]
+                html, image = htmlify(f(**(dict(values) | dict(fixed))))
                 precomputed += [
                     (
                         create_csv_line((list(zip(*keys))[1])),
-                        htmlify(f(**(dict(values) | dict(fixed)))),
+                        html,
                     )
                 ]
-            plt.close("all")
+                if image is not None:
+                    image_filenames += [image]
         finally:
             Table.max_str_rows = max_str_rows
 
-    return json.dumps(dict(precomputed), indent=2), images
+    return json.dumps(dict(precomputed), indent=2), image_filenames
 
 
 def check_parameters(f, kwargs):
@@ -368,9 +387,17 @@ def make_widgets(f, kwargs):
     return widgets
 
 
-def html_interact(f, **kwargs):
+def html_interact(f, max_choices=256, **kwargs):
     uid = uuid()
     check_parameters(f, kwargs)
+
+    if max_choices != None:
+        while True:
+            items = [len(x._values()) for (_, x) in kwargs.items()]
+            if np.prod(items) <= max_choices:
+                break
+            biggest_key = max(kwargs, key=lambda key: len(kwargs[key]._values()))
+            kwargs[biggest_key]._downsample()
 
     htmls = [value._html(param) for (param, value) in kwargs.items()]
     scripts = [value._script() for (_, value) in kwargs.items()]
@@ -394,8 +421,7 @@ def html_interact(f, **kwargs):
         ]
     )
 
-    data, images = _permutations(f, kwargs)
-    print(images)
+    data, image_filenames = _permutations(f, kwargs)
 
     updater = textwrap.dedent(
         f"""\
@@ -429,7 +455,7 @@ def html_interact(f, **kwargs):
     """
     )
 
-    if images:
+    if image_filenames:
         preload = f"""
             <div class="hidden">
                 <script type="text/javascript">
@@ -442,7 +468,7 @@ def html_interact(f, **kwargs):
                             }}
                         }}
                         preload(
-                            {",".join([ f'"{x}"' for x in images ])}
+                            {",".join([ f'"{x}"' for x in image_filenames ])}
                         )
                     //--><!]]>
                 </script>
@@ -476,6 +502,11 @@ def html_interact(f, **kwargs):
             text-overflow: ellipsis;
             white-space: nowrap;
             padding-left: 20px;
+        }}
+
+        .interact-select {{
+            width: 200px;
+            text-overflow: ellipsis;
         }}
 
         .interact-output {{
@@ -516,37 +547,3 @@ def interact(f, **kwargs):
     """
     widgets = make_widgets(f, kwargs)
     ipywidgets.interact(f, **widgets)
-
-
-def record(f, **kwargs):
-    """
-    A helper to record interactions to make replaying with animations
-    easier.  You should only use this function for when setting up such
-    an animation.  Generally, only `interact` is needed.
-    """
-    widgets = make_widgets(f, kwargs)
-    interactor = ipywidgets.interactive(f, **widgets)
-
-    controls = interactor.children[:-1]
-    out = ipywidgets.Textarea(
-        f"def gen():\n    pass\n",
-        layout=ipywidgets.Layout(width="100%", height="200px"),
-    )
-    interactor.children = (
-        (ipywidgets.Text(value="", description="_caption"),)
-        + interactor.children
-        + (out,)
-    )
-
-    def changed(change):
-        args = "; ".join([f"{c.description} = {repr(c.value)}" for c in controls])
-        out.value = out.value.replace(
-            "    pass\n", f"    {args}\n    yield locals()\n    pass\n"
-        )
-
-    for child in controls:
-        child.observe(changed, names="value")
-
-    changed(None)
-
-    display(interactor)
