@@ -36,6 +36,42 @@ import inspect
 
 counter = 0
 
+_style = """
+    <style>
+    .interact-inline {
+        display: flex; /* Aligns children (label, slider, readout) in a row */
+        align-items: center; /* Centers the items vertically */
+        font-family: var(--jp-ui-font-family);
+    }
+
+    .interact-label {
+        width: 120px;
+        overflow: hidden; /* Prevents the text from spilling out */
+        text-overflow: ellipsis; /* Adds ellipses if the text overflows */
+        white-space: nowrap; /* Keeps the text on a single line */
+        text-align: right;
+        margin-right: 10px;            
+    }
+
+    .interact-readout {
+        width: 100px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        padding-left: 20px;
+    }
+
+    .interact-select {
+        width: 200px;
+        text-overflow: ellipsis;
+    }
+
+    .interact-output {
+        margin-top: 10px;
+        background-color: white important!;
+    }
+    </style>
+    """
 
 def uuid():
     global counter
@@ -299,6 +335,15 @@ def create_csv_line(values):
 
 
 def _permutations(f, kwargs):
+    def image_height(v):
+        if (v == None and plt.get_fignums()) or type(v) == Plot or type(v) == Figure:
+            fig = plt.gcf()
+            fig.set_tight_layout(True)
+            size = fig.get_size_inches() * fig.dpi  # size in pixels
+            return size[1]
+        else:
+            return None
+    
     def htmlify(v):
         if (v == None and plt.get_fignums()) or type(v) == Plot or type(v) == Figure:
             fig = plt.gcf()
@@ -314,7 +359,7 @@ def _permutations(f, kwargs):
             size = fig.get_size_inches() * fig.dpi  # size in pixels
 
             plt.close("all")
-            return f'<img src="{filename}">', filename
+            return filename
 
         if hasattr(v, "_repr_html_"):
             return v._repr_html_(), None  # yep, fancy format!
@@ -335,10 +380,10 @@ def _permutations(f, kwargs):
 
     # Turn off plotting and make tables bigger while computing the function.
     # Add any other special cases about displaying output here.
-    image_filenames = []  # the image files we create.
     with plt.ioff():
         res = list(itertools.product(*lists))
         max_str_rows = Table.max_str_rows
+        iheight = None
         try:
             Table.max_str_rows = 30
 
@@ -346,19 +391,21 @@ def _permutations(f, kwargs):
             for params in res:
                 keys = [(x, v) for (x, (_, v)) in params]
                 values = [(x, v) for (x, (v, _)) in params]
-                html, image = htmlify(f(**(dict(values) | dict(fixed))))
+                result = f(**(dict(values) | dict(fixed)))
+                h = image_height(result)
+                if h != None:
+                    iheight = h
+                html = htmlify(result)
                 precomputed += [
                     (
                         create_csv_line((list(zip(*keys))[1])),
                         html,
                     )
                 ]
-                if image is not None:
-                    image_filenames += [image]
         finally:
             Table.max_str_rows = max_str_rows
 
-    return json.dumps(dict(precomputed), indent=2), image_filenames
+    return dict(precomputed), iheight
 
 
 def check_parameters(f, kwargs):
@@ -403,14 +450,6 @@ def html_interact(f, max_choices=256, **kwargs):
     scripts = [value._script() for (_, value) in kwargs.items()]
     inputs = [value._input_var() for (_, value) in kwargs.items()]
 
-    full_html = textwrap.dedent(
-        f"""\
-                <div>
-                    {"  ".join(htmls)}
-                    <div class="interact-output" id="output_{uid}"></div>
-                </div>
-        """
-    )
     full_scripts = "\n".join(scripts)
 
     listeners = "\n".join(
@@ -421,10 +460,95 @@ def html_interact(f, max_choices=256, **kwargs):
         ]
     )
 
-    data, image_filenames = _permutations(f, kwargs)
+    data, iheight = _permutations(f, kwargs)
 
-    updater = textwrap.dedent(
-        f"""\
+    if iheight:
+        full_html = textwrap.dedent(
+            f"""\
+                    <div>
+                        {"  ".join(htmls)}
+                        <div class="interact-output">
+                            <img src=""  id="output_{uid}" height="{iheight}" style="object-fit: contain;"/>
+                        </div>
+                    </div>
+            """
+        )
+
+        updater = textwrap.dedent(
+            f"""\
+            var _img_{uid} = document.getElementById('output_{uid}');
+            var _cache_{uid} = {json.dumps(data, indent=2)};
+
+            function update_{uid}() {{
+                var text = createCSVLine([{", ".join([ f"{control._uid}_value()" for _, control in kwargs.items() if not isinstance(control, Fixed)])}]);
+                console.log(text)
+                _img_{uid}.src = _cache_{uid}[text];
+            }} 
+            update_{uid}();
+        """
+        )
+    else:
+        full_html = textwrap.dedent(
+            f"""\
+                    <div>
+                        {"  ".join(htmls)}
+                        <div class="interact-output" id="output_{uid}">
+                        </div>
+                    </div>
+            """
+        )
+
+        updater = textwrap.dedent(
+            f"""\
+            var _output_{uid} = document.getElementById('output_{uid}');
+            var _cache_{uid} = {json.dumps(data, indent=2)};
+
+            function update_{uid}() {{
+                var text = createCSVLine([{", ".join([ f"{control._uid}_value()" for _, control in kwargs.items() if not isinstance(control, Fixed)])}]);
+                console.log(text)
+                _output_{uid}.innerHTML = _cache_{uid}[text];
+            }} 
+            update_{uid}();
+        """
+        )
+
+
+    if iheight:
+        preload = f"""
+            <div class="hidden">
+                <script type="text/javascript">
+                    document.addEventListener('DOMContentLoaded', function() {{
+                        async function preloadImages(imageUrls) {{
+                            const imageLoadPromises = imageUrls.map(url => {{
+                                return new Promise((resolve, reject) => {{
+                                    const img = new Image();
+                                    img.onload = () => resolve(img);
+                                    img.onerror = reject;
+                                    img.src = url;
+                                }});
+                            }});
+
+                            Promise.all(imageLoadPromises)
+                                .then(() => console.log("All images loaded successfully!"))
+                                .catch(error => console.error("Error loading some images:", error));
+                        }}
+                        preloadImages([{",".join([ f'"{x}"' for x in data.values() ])}]);
+                    }});
+                </script>
+                
+            </div>
+            """
+    else:
+        preload = ""
+
+    return HTML(
+        textwrap.dedent(
+            f"""\
+        {_style}
+        {full_html}
+        <script>
+        {full_scripts}
+        
         function createCSVLine(values) {{
             return values.map(value => {{
                 let stringValue = ""
@@ -442,82 +566,7 @@ def html_interact(f, max_choices=256, **kwargs):
                 return stringValue;
             }}).join(',');
         }}
-                              
-        var _output_{uid} = document.getElementById('output_{uid}');
-        var _cache_{uid} = {data};
-
-        function update_{uid}() {{
-            var text = createCSVLine([{", ".join([ f"{control._uid}_value()" for _, control in kwargs.items() if not isinstance(control, Fixed)])}]);
-            console.log(text)
-            _output_{uid}.innerHTML = _cache_{uid}[text];
-        }} 
-        update_{uid}();
-    """
-    )
-
-    if image_filenames:
-        preload = f"""
-            <div class="hidden">
-                <script type="text/javascript">
-                    <!--//--><![CDATA[//><!--
-                        var images = new Array()
-                        function preload() {{
-                            for (i = 0; i < preload.arguments.length; i++) {{
-                                images[i] = new Image()
-                                images[i].src = preload.arguments[i]
-                            }}
-                        }}
-                        preload(
-                            {",".join([ f'"{x}"' for x in image_filenames ])}
-                        )
-                    //--><!]]>
-                </script>
-            </div>
-            """
-    else:
-        preload = ""
-
-    return HTML(
-        textwrap.dedent(
-            f"""\
-        <style>
-        .interact-inline {{
-            display: flex; /* Aligns children (label, slider, readout) in a row */
-            align-items: center; /* Centers the items vertically */
-            font-family: var(--jp-ui-font-family);
-        }}
-
-        .interact-label {{
-            width: 120px;
-            overflow: hidden; /* Prevents the text from spilling out */
-            text-overflow: ellipsis; /* Adds ellipses if the text overflows */
-            white-space: nowrap; /* Keeps the text on a single line */
-            text-align: right;
-            margin-right: 10px;            
-        }}
-
-        .interact-readout {{
-            width: 100px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            padding-left: 20px;
-        }}
-
-        .interact-select {{
-            width: 200px;
-            text-overflow: ellipsis;
-        }}
-
-        .interact-output {{
-            margin-top: 10px;
-            background-color: white important!;
-        }}
-        </style>
-
-        {full_html}
-        <script>
-        {full_scripts}
+                            
         {updater}
         {listeners}
         </script>
