@@ -17,6 +17,7 @@ __all__ = [
     "html_interact",
 ]
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from numbers import Integral
 import os
 import json
@@ -309,7 +310,7 @@ class Choice(Control):
 
     def _downsample(self):
         indices = np.linspace(
-            0, len(self.v) - 1, len(self._v) // 2 + 1, endpoint=True, dtype=int
+            0, len(self._v) - 1, len(self._v) // 2 + 1, endpoint=True, dtype=int
         )
         self._v = [self._v[i] for i in indices]
 
@@ -335,14 +336,14 @@ def create_csv_line(values):
 
 
 def _permutations(f, kwargs):
-    def image_height(v):
-        if (v == None and plt.get_fignums()) or type(v) == Plot or type(v) == Figure:
-            fig = plt.gcf()
-            fig.set_tight_layout(True)
-            size = fig.get_size_inches() * fig.dpi  # size in pixels
-            return size[1]
-        else:
-            return None
+    # def image_height(v):
+    #     if (v == None and plt.get_fignums()) or type(v) == Plot or type(v) == Figure:
+    #         fig = plt.gcf()
+    #         fig.set_tight_layout(True)
+    #         size = fig.get_size_inches() * fig.dpi  # size in pixels
+    #         return size[1]
+    #     else:
+    #         return None
     
     def htmlify(v):
         if (v == None and plt.get_fignums()) or type(v) == Plot or type(v) == Figure:
@@ -359,12 +360,20 @@ def _permutations(f, kwargs):
             size = fig.get_size_inches() * fig.dpi  # size in pixels
 
             plt.close("all")
-            return filename
+            return filename, size[1]
 
         if hasattr(v, "_repr_html_"):
             return v._repr_html_(), None  # yep, fancy format!
         else:
             return f"<pre>{v}</pre>", None
+
+    def precompute(f, fixed, params):
+        keys = [(x, v) for (x, (_, v)) in params]
+        values = [(x, v) for (x, (v, _)) in params]
+        result = f(**(dict(values) | dict(fixed)))
+        key = create_csv_line((list(zip(*keys))[1]))
+        html, iheight = htmlify(result)
+        return (key, html), iheight
 
     lists = [
         [(param, (v, control._format(v))) for v in control._values()]
@@ -380,6 +389,7 @@ def _permutations(f, kwargs):
 
     # Turn off plotting and make tables bigger while computing the function.
     # Add any other special cases about displaying output here.
+
     with plt.ioff():
         res = list(itertools.product(*lists))
         max_str_rows = Table.max_str_rows
@@ -387,25 +397,20 @@ def _permutations(f, kwargs):
         try:
             Table.max_str_rows = 30
 
-            precomputed = []
-            for params in res:
-                keys = [(x, v) for (x, (_, v)) in params]
-                values = [(x, v) for (x, (v, _)) in params]
-                result = f(**(dict(values) | dict(fixed)))
-                h = image_height(result)
-                if h != None:
-                    iheight = h
-                html = htmlify(result)
-                precomputed += [
-                    (
-                        create_csv_line((list(zip(*keys))[1])),
-                        html,
-                    )
-                ]
+            (key, html), iheight = precompute(f, fixed, res[0])
+            precomputed = [(key,html)]
+
+            num_cores = 1
+
+            with ThreadPoolExecutor(max_workers=num_cores) as executor:
+                futures = [executor.submit(precompute, f, fixed, params) for params in res[1:]]
+                for future in as_completed(futures):
+                    (key, html), height = future.result()
+                    precomputed.append((key, html))
+            return dict(precomputed), iheight
         finally:
             Table.max_str_rows = max_str_rows
 
-    return dict(precomputed), iheight
 
 
 def check_parameters(f, kwargs):
@@ -434,10 +439,16 @@ def make_widgets(f, kwargs):
     return widgets
 
 
-def html_interact(f, max_choices=256, **kwargs):
+def html_interact(f, max_choices=128, **kwargs):
     uid = uuid()
     check_parameters(f, kwargs)
 
+    # not control gets more than 32 steps
+    for (_, x) in kwargs.items():
+        while len(x._values()) > 32:
+            x._downsample()
+
+    # total state space < 256
     if max_choices != None:
         while True:
             items = [len(x._values()) for (_, x) in kwargs.items()]
@@ -467,8 +478,8 @@ def html_interact(f, max_choices=256, **kwargs):
             f"""\
                     <div>
                         {"  ".join(htmls)}
-                        <div class="interact-output">
-                            <img src=""  id="output_{uid}" height="{iheight}" style="object-fit: contain;"/>
+                        <div class="interact-output" style="display: flex; align-items: top;">
+                            <img src=""  id="output_{uid}" style="object-fit: contain;"/>
                         </div>
                     </div>
             """
@@ -478,13 +489,18 @@ def html_interact(f, max_choices=256, **kwargs):
             f"""\
             var _img_{uid} = document.getElementById('output_{uid}');
             var _cache_{uid} = {json.dumps(data, indent=2)};
+            var _preloaded_{uid} = false;
 
-            function update_{uid}() {{
+            function update_{uid}(preload = true) {{
                 var text = createCSVLine([{", ".join([ f"{control._uid}_value()" for _, control in kwargs.items() if not isinstance(control, Fixed)])}]);
-                console.log(text)
                 _img_{uid}.src = _cache_{uid}[text];
+
+                if (preload && false && !_preloaded_{uid}) {{
+                    _preloaded_{uid} = true;
+                    preloadImages([{",".join([ f'"{x}"' for x in data.values() ])}]);
+                }}
             }} 
-            update_{uid}();
+            update_{uid}(preload = false);
         """
         )
     else:
@@ -513,41 +529,77 @@ def html_interact(f, max_choices=256, **kwargs):
         )
 
 
-    if iheight:
-        preload = f"""
-            <div class="hidden">
-                <script type="text/javascript">
-                    document.addEventListener('DOMContentLoaded', function() {{
-                        async function preloadImages(imageUrls) {{
-                            const imageLoadPromises = imageUrls.map(url => {{
-                                return new Promise((resolve, reject) => {{
-                                    const img = new Image();
-                                    img.onload = () => resolve(img);
-                                    img.onerror = reject;
-                                    img.src = url;
-                                }});
-                            }});
+        # if iheight:
+        #     preload = f"""
+        #         <div class="hidden">
+        #             <script type="text/javascript">
+        #                 document.addEventListener('DOMContentLoaded', function() {{
+        #                     async function preloadImages(imageUrls) {{
+        #                         const imageLoadPromises = imageUrls.map(url => {{
+        #                             return new Promise((resolve, reject) => {{
+        #                                 const img = new Image();
+        #                                 img.onload = () => resolve(img);
+        #                                 img.onerror = reject;
+        #                                 img.src = url;
+        #                             }});
+        #                         }});
 
-                            Promise.all(imageLoadPromises)
-                                .then(() => console.log("All images loaded successfully!"))
-                                .catch(error => console.error("Error loading some images:", error));
-                        }}
-                        preloadImages([{",".join([ f'"{x}"' for x in data.values() ])}]);
-                    }});
-                </script>
-                
-            </div>
-            """
-    else:
-        preload = ""
+        #                         Promise.all(imageLoadPromises)
+        #                             .then(() => console.log("All images loaded successfully!"))
+        #                             .catch(error => console.error("Error loading some images:", error));
+        #                     }}
+        #                     preloadImages([{",".join([ f'"{x}"' for x in data.values() ])}]);
+        #                 }});
+        #             </script>
+                    
+        #         </div>
+        #         """
+            
+        #     preload = f"""
+        #         <div class="hidden">
+        #                     async function preloadImages(imageUrls) {{
+        #                         const imageLoadPromises = imageUrls.map(url => {{
+        #                             return new Promise((resolve, reject) => {{
+        #                                 const img = new Image();
+        #                                 img.onload = () => resolve(img);
+        #                                 img.onerror = reject;
+        #                                 img.src = url;
+        #                             }});
+        #                         }});
 
-    return HTML(
+        #                         Promise.all(imageLoadPromises)
+        #                             .then(() => console.log("All images loaded successfully!"))
+        #                             .catch(error => console.error("Error loading some images:", error));
+        #                     }}
+        #                     preloadImages([{",".join([ f'"{x}"' for x in data.values() ])}]);
+        #         </div>
+        #         """
+
+        # else:
+    preload = ""
+
+    display(HTML(
         textwrap.dedent(
             f"""\
         {_style}
         {full_html}
         <script>
         {full_scripts}
+
+        async function preloadImages(imageUrls) {{
+            const imageLoadPromises = imageUrls.map(url => {{
+                return new Promise((resolve, reject) => {{
+                    const img = new Image();
+                    img.onload = () => resolve(img);
+                    img.onerror = reject;
+                    img.src = url;
+                }});
+            }});
+
+            Promise.all(imageLoadPromises)
+                .then(() => console.log("All images loaded successfully!"))
+                .catch(error => console.error("Error loading some images:", error));
+        }}
         
         function createCSVLine(values) {{
             return values.map(value => {{
@@ -573,7 +625,7 @@ def html_interact(f, max_choices=256, **kwargs):
         {preload}
     """
         )
-    )
+    ))
 
 
 @doc_tag("interact")
@@ -596,3 +648,23 @@ def interact(f, **kwargs):
     """
     widgets = make_widgets(f, kwargs)
     ipywidgets.interact(f, **widgets)
+
+
+                # spinnerTimeout = setTimeout(function() {{
+                #     spinner_{uid}.style.display = 'block';
+                # }}, 250); 
+
+                # _img_{uid}.onload = function() {{
+                #     clearTimeout(spinnerTimeout);
+                #     spinner_{uid}.style.display = 'none';
+                # }};
+
+                # _img_{uid}.onerror = function() {{
+                #     clearTimeout(spinnerTimeout); 
+                #     spinner_{uid}.style.display = 'none'; 
+                # }};
+
+
+#                             <div id="spinner_{uid}" class="pl-2 spinner-border text-secondary" style="display: none;" role="status">
+                            #     <span class="sr-only">Loading...</span>
+                            # </div>
