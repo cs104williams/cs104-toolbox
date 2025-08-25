@@ -88,8 +88,8 @@ ops = {
     GtE: (lambda x, y: x >= y, ">=", Lt),
     Is: (lambda x, y: x is y, "is", IsNot),
     IsNot: (lambda x, y: x is not y, "is not", Is),
-    In: (lambda x, y: x in y, "in", NotIn),
-    NotIn: (lambda x, y: x not in y, "not in", In),
+    In: (lambda x, y: x in y, "is in", NotIn),
+    NotIn: (lambda x, y: x not in y, "is not in", In),
 }
 
 
@@ -150,7 +150,7 @@ def eval_check(line, local_ns=None):
 
         # special error if one of the variables is ..., and not by design
         if text_for(x) != "..." and (result is ... or result is type(...)):
-            raise ValueError(f"{text_for(x)} should not be ...")
+            raise ValueError(f"`{text_for(x)}` should not be `...`")
 
         return result
 
@@ -162,14 +162,14 @@ def eval_check(line, local_ns=None):
         """
         if index != None and type(x_value) in [list, tuple, np.ndarray]:
             ivalue = norm(x_value[index])
-            return f"{unparse(x)}[{index}] == {ivalue} and ", ivalue
+            return f"`{unparse(x)}[{index}]` is {ivalue} and ", ivalue
         elif (
             type(x) != Constant
             and type(x_value) not in [approx, between, between_or_equal]
             and unparse(x) != norm(x_value)
         ):
             value = norm(x_value)
-            return f"{unparse(x)} == {value} and ", value
+            return f"`{unparse(x)}` is {value} and ", value
         else:
             return "", norm(x_value)
 
@@ -194,7 +194,7 @@ def eval_check(line, local_ns=None):
                 if len(false_indices) > 3:
                     message += [f"... omitting {len(false_indices)-3} more case(s)"]
             return [
-                f"{text_for(left)} {to_string(op)} {text_for(right)} is false because"
+                f"`{text_for(left)} {to_string(op)} {text_for(right)}` is false because"
             ] + ["  " + m for m in message]
         return []
 
@@ -225,8 +225,8 @@ def eval_check(line, local_ns=None):
         elif t is UnaryOp and type(x.op) == Not:
             if eval_expr(x.operand, depth + 1) == []:
                 return [
-                    f'{"  " * depth}{text_for(x)} is false because',
-                    f'{"  " * (depth+1)}{text_for(x.operand)} is true',
+                    f'{"  " * depth}`{text_for(x)}` is false because',
+                    f'{"  " * (depth+1)}`{text_for(x.operand)}` is true',
                 ]
             else:
                 return []
