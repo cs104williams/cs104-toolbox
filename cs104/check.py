@@ -118,6 +118,8 @@ def norm(x):
         x = np.array(x)
     if type(x) == type or type(x) == abc.ABCMeta:
         return x.__name__
+    if type(x) == str:
+        return repr(x)
     if type(x) != np.ndarray:
         return str(x)
     else:
