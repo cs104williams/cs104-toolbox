@@ -10,7 +10,7 @@ __all__ = ["States", "Countries", "HopkinsForest"]
 
 from datascience import *
 import numpy as np
-import pkg_resources
+from importlib.resources import files as _resource_files
 
 
 def check_table(t):
@@ -48,7 +48,7 @@ class States(Map):
 
         """
         states = States.read_geojson(
-            pkg_resources.resource_filename(__name__, "data/us-states.json")
+            str(_resource_files(__package__) / "data/us-states.json")
         )
 
         kws = {"nan_fill_color": "gray", "nan_fill_opacity": 0.2, "line_opacity": 0.3}
@@ -87,7 +87,7 @@ class Countries(Map):
         """
 
         countries = Countries.read_geojson(
-            pkg_resources.resource_filename(__name__, "data/world-countries.json")
+            str(_resource_files(__package__) / "data/world-countries.json")
         )
 
         kws = {"nan_fill_color": "gray", "nan_fill_opacity": 0.2, "line_opacity": 0.3}
@@ -123,7 +123,7 @@ class HopkinsForest(Map):
 
         """
         countries = HopkinsForest.read_geojson(
-            pkg_resources.resource_filename(__name__, "data/hopkins-forest.json")
+            str(_resource_files(__package__) / "data/hopkins-forest.json")
         )
 
         kws = {"nan_fill_color": "gray", "nan_fill_opacity": 0.2, "line_opacity": 0.3}
