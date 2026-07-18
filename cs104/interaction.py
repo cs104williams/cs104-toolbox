@@ -1,10 +1,10 @@
 """
 Objects for creating interactive visualizations.
 
-The key function is `interact`, which is modeled after the underlying 
+The key function is `interact`, which is modeled after the underlying
 matplotlib function.  The `interact` function takes a function, and then
-a list of keyword arges matching the parameter names for the function 
-to Control objects, each of which describes how the user may adjust 
+a list of keyword arges matching the parameter names for the function
+to Control objects, each of which describes how the user may adjust
 each parameter to the given function.
 """
 
@@ -73,6 +73,7 @@ _style = """
     }
     </style>
     """
+
 
 def uuid():
     global counter
@@ -250,7 +251,10 @@ class Slider(Control):
 
     def _values(self):
         start, stop, step = self._v
-        return np.arange(start, stop + step, step)
+        values = np.arange(start, stop + step, step)
+        if values[-1] > stop:
+            values = values[:-1]
+        return values
 
     def _downsample(self):
         self._v = (self._v[0], self._v[1], 2 * self._v[2])
@@ -344,7 +348,7 @@ def _permutations(f, kwargs):
     #         return size[1]
     #     else:
     #         return None
-    
+
     def htmlify(v):
         if (v == None and plt.get_fignums()) or type(v) == Plot or type(v) == Figure:
             fig = plt.gcf()
@@ -398,19 +402,20 @@ def _permutations(f, kwargs):
             Table.max_str_rows = 30
 
             (key, html), iheight = precompute(f, fixed, res[0])
-            precomputed = [(key,html)]
+            precomputed = [(key, html)]
 
             num_cores = 1
 
             with ThreadPoolExecutor(max_workers=num_cores) as executor:
-                futures = [executor.submit(precompute, f, fixed, params) for params in res[1:]]
+                futures = [
+                    executor.submit(precompute, f, fixed, params) for params in res[1:]
+                ]
                 for future in as_completed(futures):
                     (key, html), height = future.result()
                     precomputed.append((key, html))
             return dict(precomputed), iheight
         finally:
             Table.max_str_rows = max_str_rows
-
 
 
 def check_parameters(f, kwargs):
@@ -439,12 +444,12 @@ def make_widgets(f, kwargs):
     return widgets
 
 
-def html_interact(f, max_choices=128, **kwargs):
+def html_interact(f, max_choices=256, **kwargs):
     uid = uuid()
     check_parameters(f, kwargs)
 
     # not control gets more than 32 steps
-    for (_, x) in kwargs.items():
+    for _, x in kwargs.items():
         while len(x._values()) > 32:
             x._downsample()
 
@@ -528,7 +533,6 @@ def html_interact(f, max_choices=128, **kwargs):
         """
         )
 
-
         # if iheight:
         #     preload = f"""
         #         <div class="hidden">
@@ -551,10 +555,10 @@ def html_interact(f, max_choices=128, **kwargs):
         #                     preloadImages([{",".join([ f'"{x}"' for x in data.values() ])}]);
         #                 }});
         #             </script>
-                    
+
         #         </div>
         #         """
-            
+
         #     preload = f"""
         #         <div class="hidden">
         #                     async function preloadImages(imageUrls) {{
@@ -578,9 +582,10 @@ def html_interact(f, max_choices=128, **kwargs):
         # else:
     preload = ""
 
-    display(HTML(
-        textwrap.dedent(
-            f"""\
+    display(
+        HTML(
+            textwrap.dedent(
+                f"""\
         {_style}
         {full_html}
         <script>
@@ -624,8 +629,9 @@ def html_interact(f, max_choices=128, **kwargs):
         </script>
         {preload}
     """
+            )
         )
-    ))
+    )
 
 
 @doc_tag("interact")
@@ -649,22 +655,21 @@ def interact(f, **kwargs):
     widgets = make_widgets(f, kwargs)
     ipywidgets.interact(f, **widgets)
 
+    # spinnerTimeout = setTimeout(function() {{
+    #     spinner_{uid}.style.display = 'block';
+    # }}, 250);
 
-                # spinnerTimeout = setTimeout(function() {{
-                #     spinner_{uid}.style.display = 'block';
-                # }}, 250); 
+    # _img_{uid}.onload = function() {{
+    #     clearTimeout(spinnerTimeout);
+    #     spinner_{uid}.style.display = 'none';
+    # }};
 
-                # _img_{uid}.onload = function() {{
-                #     clearTimeout(spinnerTimeout);
-                #     spinner_{uid}.style.display = 'none';
-                # }};
-
-                # _img_{uid}.onerror = function() {{
-                #     clearTimeout(spinnerTimeout); 
-                #     spinner_{uid}.style.display = 'none'; 
-                # }};
+    # _img_{uid}.onerror = function() {{
+    #     clearTimeout(spinnerTimeout);
+    #     spinner_{uid}.style.display = 'none';
+    # }};
 
 
 #                             <div id="spinner_{uid}" class="pl-2 spinner-border text-secondary" style="display: none;" role="status">
-                            #     <span class="sr-only">Loading...</span>
-                            # </div>
+#     <span class="sr-only">Loading...</span>
+# </div>
