@@ -16,7 +16,7 @@ import uuid
 from textwrap import dedent
 
 from ansi2html import Ansi2HTMLConverter
-from IPython.core.display import HTML, display
+from IPython.display import HTML, display
 from IPython.core.getipython import get_ipython
 
 from . import context
