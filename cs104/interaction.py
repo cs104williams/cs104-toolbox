@@ -250,10 +250,27 @@ class Slider(Control):
 
     def _values(self):
         start, stop, step = self._v
-        return np.arange(start, stop + step, step)
+        range = np.arange(start, stop + step, step)
+        return [ max(0, min(stop, x)) for x in range ]
 
     def _downsample(self):
-        self._v = (self._v[0], self._v[1], 2 * self._v[2])
+        # self._v = (self._v[0], self._v[1], 2 * self._v[2])
+        start, end, step = self._v
+        original_points = np.arange(start, end + step, step)
+        
+        # Calculate the total number of points
+        num_points = len(original_points)
+        
+        # Create a new set of points with half the number of points
+        new_num_points = num_points // 2
+        
+        # Calculate the new step size
+        new_step = (end - start) / (new_num_points - 1)
+        if isinstance(step, int):
+            new_step = int(new_step)
+
+        self._v = (self._v[0], self._v[1], new_step)
+
 
     def _format(self, v):
         str_value = f"{v:.6f}"

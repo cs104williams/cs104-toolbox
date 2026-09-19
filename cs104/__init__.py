@@ -11,3 +11,6 @@ from .maps import *
 from .version import __version__
 
 warnings.filterwarnings("ignore")
+
+import numpy as np
+np.set_printoptions(legacy="1.25")
